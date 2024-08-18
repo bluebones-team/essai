@@ -1,0 +1,34 @@
+{
+  "darkmode": true,
+  "themeLocation": "theme.json",
+  "pages": ["pages/join/index", "pages/user/index", "pages/user/login/index"],
+  "window": {
+    "navigationStyle": "custom",
+    "navigationBarTitleText": "蓝骨头招募",
+    "navigationBarBackgroundColor": "@bgColor",
+    "navigationBarTextStyle": "@textColor",
+    "backgroundColor": "@bgColor",
+    "backgroundColorTop": "@bgColor",
+    "backgroundColorBottom": "@bgColor"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "@color",
+    "selectedColor": "@color",
+    "backgroundColor": "@bgColor",
+    "borderStyle": "@textColor",
+    "list": [
+      {
+        "text": "JOIN",
+        "pagePath": "pages/join/index"
+      },
+      {
+        "text": "USER",
+        "pagePath": "pages/user/index"
+      }
+    ]
+  },
+  "usingComponents": {},
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

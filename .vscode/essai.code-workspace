@@ -1,0 +1,22 @@
+{
+  "folders": [
+    {
+      "path": "..",
+    },
+    {
+      "path": "../packages/shared",
+    },
+    {
+      "path": "../packages/backend",
+    },
+    {
+      "path": "../packages/browser",
+    },
+    {
+      "path": "../packages/wxapp",
+    },
+  ],
+  "settings": {
+    ,
+  },
+}

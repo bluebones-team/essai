@@ -1,0 +1,89 @@
+/* 日程样式 */
+.event-0-0 {
+  background-color: #008000;
+}
+.event-0-1 {
+  background-color: #ff0000;
+}
+.event-1-0,
+.event-1-1 {
+  background-color: #808080;
+}
+.event-2-0 {
+  background-color: #00800060;
+}
+.event-2-1 {
+  background-color: #ff000060;
+}
+
+.vuecal {
+  height: auto;
+}
+.vuecal * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+}
+/* 表头和表体 */
+.vuecal__weekdays-headings,
+.vuecal__bg {
+  background-color: rgb(var(--v-theme-surface));
+}
+/* 顶部工具栏 */
+.vuecal__title-bar {
+  height: 48px;
+  color: rgb(var(--v-theme-on-primary));
+  background-color: rgb(var(--v-theme-primary));
+}
+/* 左右切换箭头 */
+.vuecal__arrow {
+  margin: 0;
+}
+/* 今天单元格 */
+.vuecal__cell--today,
+.vuecal__cell--current {
+  background-color: rgba(var(--v-theme-on-code), 0.05);
+  z-index: 1;
+}
+/* 选择单元格 */
+.vuecal:not(.vuecal--day-view) .vuecal__cell--selected {
+  background-color: transparent;
+  z-index: 2;
+}
+.vuecal__cell--selected:before {
+  /* border: none; */
+  border-color: rgba(var(--v-theme-primary));
+  border-radius: 8px;
+}
+.vuecal__cell--highlighted:not(.vuecal__cell--has-splits),
+.vuecal__cell-split--highlighted {
+  background-color: rgba(var(--v-theme-on-code), 0.05);
+}
+/* 月视图事件 */
+.vuecal__cell-events-count {
+  width: 4px;
+  height: 4px;
+  min-width: 0;
+  padding: 4px;
+  color: transparent;
+  background-color: rgb(var(--v-theme-primary));
+}
+/* 周视图事件 */
+.vuecal__event {
+  padding: 4px;
+  /* border: 1px solid black; */
+  border-radius: 8px;
+}
+/* 删除按钮 */
+.vuecal__event .vuecal__event-delete {
+  height: 100%;
+}
+/* 时间轴 */
+.vuecal__time-cell-line.hours {
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 16px;
+  text-align: center;
+}
+.vuecal__time-cell-line.hours:before {
+  border-color: rgba(var(--v-theme-primary), 0.6);
+}

@@ -1,0 +1,20 @@
+<!-- https://tdesign.tencent.com/miniprogram/components/tab-bar?tab=api -->
+<view class="page">
+  <t-tab-bar
+    t-class="t-tab-bar"
+    bind:change="onChange"
+    value="{{curTabbar}}"
+    defaultValue="{{list[0].i}}"
+    split="{{false}}"
+  >
+    <t-tab-bar-item
+      wx:for="{{list}}"
+      wx:key="i"
+      value="{{item.i}}"
+      icon="{{item.icon}}"
+      badgeProps="{{item.badgeProps || null}}"
+    >
+      {{item.label}}
+    </t-tab-bar-item>
+  </t-tab-bar>
+</view>

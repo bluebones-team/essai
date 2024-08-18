@@ -1,0 +1,42 @@
+{
+  "name": "essai",
+  "author": "Bluebones Team",
+  "module": "index.ts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint --cache --max-warnings 0 \"packages/src/**/*.{js,ts}\" --fix",
+    "format": "prettier --write \"packages/*/src/**/*.{js,ts,json,css,html,md}\""
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/lodash-es": "^4.17.12",
+    "dotenv": "^16.4.5",
+    "husky": "^9.1.4",
+    "prettier": "^3.3.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@trpc/client": "^10.45.2",
+    "@trpc/server": "^10.45.2",
+    "lodash-es": "^4.17.21",
+    "zod": "^3.23.8"
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{md}": [
+      "prettier --write"
+    ],
+    "package.json": [
+      "prettier --write"
+    ]
+  }
+}

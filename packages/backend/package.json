@@ -1,0 +1,32 @@
+{
+  "name": "backend",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun --hot src/app.ts",
+    "type-check": "tsc --noEmit --noUnusedLocals false"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/koa-json": "^2.0.23",
+    "globals": "^15.6.0",
+    "pino-pretty": "^11.2.1"
+  },
+  "dependencies": {
+    "@alicloud/dysmsapi20170525": "2.0.24",
+    "connect-redis": "^7.1.1",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "koa": "^2.15.3",
+    "koa-body": "^6.0.1",
+    "koa-helmet": "^7.0.2",
+    "koa-json": "^2.0.2",
+    "koa-logger": "^3.2.1",
+    "mongoose": "^8.5.2",
+    "pino": "^9.3.2",
+    "redis": "^4.7.0",
+    "shared": "workspace:*",
+    "trpc-koa-adapter": "^1.2.2",
+    "zocker": "^1.4.1"
+  }
+}

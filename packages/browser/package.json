@@ -1,0 +1,34 @@
+{
+  "name": "browser",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "tsc --noEmit --noUnusedLocals false -p tsconfig.app.json --composite false",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "lottie-web": "^5.12.2",
+    "shared": "workspace:*",
+    "vue": "^3.4.38",
+    "vue-cal": "^4.9.0",
+    "vue-router": "^4.4.3",
+    "vuetify": "^3.7.0"
+  },
+  "devDependencies": {
+    "@mdi/js": "^7.4.47",
+    "@tsconfig/node18": "^18.2.4",
+    "@types/node": "^18.19.44",
+    "@vitejs/plugin-vue-jsx": "^4.0.1",
+    "@vue/tsconfig": "^0.4.0",
+    "npm-run-all2": "^6.2.2",
+    "rollup-plugin-visualizer": "^5.12.0",
+    "unplugin-inject-preload": "^2.0.5",
+    "vite": "^4.5.3",
+    "vite-plugin-compression": "^0.5.1",
+    "vite-plugin-multiple-entries": "^0.0.1",
+    "vite-plugin-pwa": "^0.20.1"
+  }
+}

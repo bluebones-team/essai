@@ -1,0 +1,20 @@
+<t-navbar
+  t-class-placeholder="t-navbar-placeholder"
+  t-class-content="t-navbar-content"
+>
+  <view style="--td-search-height: 64rpx; margin: 16rpx 32rpx" slot="left">
+    <!-- https://tdesign.tencent.com/miniprogram/components/search?tab=api -->
+    <t-search shape="round" placeholder="搜索项目" action="高级" />
+  </view>
+</t-navbar>
+<!-- https://tdesign.tencent.com/miniprogram/components/cell?tab=api -->
+<t-cell-group theme="default">
+  <t-cell
+    wx:for="{{state.list}}"
+    wx:key="id"
+    title="{{item.title}}"
+    description="{{item.position.detail}}"
+    hover
+    arrow
+  />
+</t-cell-group>

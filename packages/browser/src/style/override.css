@@ -1,0 +1,58 @@
+/* 原生样式覆盖 */
+html {
+  overflow: auto;
+  /* scrollbar-width: thin;
+    scrollbar-color: rgb(var(--v-theme-primary))
+        rgb(var(--v-theme-on-surface-variant)); */
+  transition-delay: 0s;
+}
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  appearance: textfield;
+}
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+  background: transparent;
+}
+::-webkit-scrollbar-track {
+  background: rgb(var(--v-theme-on-surface-variant));
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: rgb(var(--v-theme-primary));
+}
+
+/* 组件库样式覆盖 */
+.v-col {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.v-row,
+.v-stepper > .v-window {
+  margin: 0 !important;
+}
+.v-tab.v-tab.v-btn {
+  min-width: auto;
+}
+.v-tab__slider {
+  left: auto;
+  right: 0.1px;
+  bottom: 0.1px;
+}
+.v-list-item--nav .v-list-item-title {
+  font-size: 0.9rem;
+}
+.v-field__input {
+  text-overflow: ellipsis;
+}
+.v-label {
+  margin-inline-start: 0 !important;
+}
+.v-card-item__prepend {
+  padding-inline-end: 0;
+}

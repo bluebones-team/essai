@@ -1,0 +1,41 @@
+@import './override.css';
+
+.w-fit {
+  width: fit-content;
+  width: -moz-fit-content;
+}
+.interact {
+  pointer-events: all;
+}
+.no-interact {
+  pointer-events: none;
+}
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+.d-grid {
+  display: grid;
+}
+.grid-col-auto {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+}
+.grid-col-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.grid-col-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.activated {
+  color: rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), var(--v-activated-opacity));
+}
+.center {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

@@ -1,0 +1,12 @@
+{
+  "light": {
+    "textColor": "black",
+    "color": "#181818",
+    "bgColor": "#ffffff"
+  },
+  "dark": {
+    "textColor": "white",
+    "color": "#ffffff",
+    "bgColor": "#181818"
+  }
+}
