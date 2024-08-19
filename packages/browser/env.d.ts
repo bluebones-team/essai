@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/vue" />
+/// <reference types="shared/types" />
+
 import type { HTMLAttributes } from '@vue/runtime-dom';
 import type { Role } from 'shared/enum';
 import 'vue-router';

@@ -3,7 +3,7 @@ import { defineComponent, reactive } from '@vue-mini/core';
 
 defineComponent(() => {
   const state = reactive({
-    list: [] as Project.Public.Preview[],
+    list: [] as Project['public']['Preview'][],
   });
   return {
     state,

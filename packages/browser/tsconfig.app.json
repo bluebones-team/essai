@@ -1,6 +1,5 @@
 {
   "extends": ["@vue/tsconfig/tsconfig.json", "../../tsconfig.json"],
-  // "include": ["env.d.ts", "src/**/*", "src/**/*.d.ts"],
   "include": ["env.d.ts", "types/*", "src/**/*"],
   "compilerOptions": {
     "composite": true,

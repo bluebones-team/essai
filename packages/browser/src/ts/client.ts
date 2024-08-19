@@ -5,12 +5,11 @@ import {
   splitLink,
   wsLink,
 } from '@trpc/client';
-import type { AppRouter } from 'backend';
 import { createClient, getApiURL, type CustomContext } from 'shared/client';
 import { snackbar, storage } from '~/ts/state';
 
 export const client = createClient(
-  createTRPCProxyClient<AppRouter>({
+  createTRPCProxyClient({
     links: [
       splitLink({
         condition(op) {

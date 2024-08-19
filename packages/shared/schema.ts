@@ -11,7 +11,6 @@ import {
   RptProjectType,
   RptUserType,
 } from './enum';
-import './types';
 
 function enums<const T extends number>(d: { _enums: T[] }, isStr?: true) {
   const values = d._enums;

@@ -1,4 +1,6 @@
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import type { CreateHTTPContextOptions } from '@trpc/server/adapters/standalone';
+import type { Input, Output } from 'shared/client';
 import { BizCode } from 'shared/enum';
 import { createKoaMiddleware } from 'trpc-koa-adapter';
 import { t } from './api';
@@ -6,7 +8,7 @@ import apiRouter from './implement';
 
 export const appRouter = t.mergeRouters(
   apiRouter,
-  t.router({ test: t.procedure.query(() => 'hello world') }),
+  t.router({ test: t.procedure.query(() => 'hello world') }), // test
 );
 function createContext(e: CreateHTTPContextOptions) {
   return e;
@@ -26,5 +28,10 @@ export const output = {
 };
 
 export type Middleware = Parameters<typeof t.procedure.use>[0];
-export type AppRouter = typeof appRouter;
 export type Context = ReturnType<typeof createContext>;
+
+// Router type unit test
+type ApiRouter = typeof apiRouter;
+type _Input = isEuqal<Input, inferRouterInputs<ApiRouter>>;
+type _Output = isEuqal<Output, inferRouterOutputs<ApiRouter>>;
+type IsRouterCorrect<_ extends _Input & _Output = true> = _;

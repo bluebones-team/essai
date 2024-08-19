@@ -6,7 +6,6 @@ import {
   defineComponent,
   h,
   reactive,
-  watchEffect,
   withDirectives,
 } from 'vue';
 import { RouterView, type RouteRecordRaw } from 'vue-router';

@@ -1,11 +1,5 @@
-import type { createTRPCProxyClient } from '@trpc/client';
-import type {
-  inferRouterInputs,
-  inferRouterOutputs,
-  ProcedureOptions,
-} from '@trpc/server';
-import type { Unsubscribable } from '@trpc/server/observable';
-import type { AppRouter } from 'backend';
+import type { CreateTRPCProxyClient } from '@trpc/client';
+import type { ProcedureOptions } from '@trpc/server';
 import { flowRight, merge, pick } from 'lodash-es';
 import type { z } from 'zod';
 import apiConfig, { type ApiConfig } from './api';
@@ -13,8 +7,10 @@ import { BizCode } from './enum';
 import { shared } from './schema';
 
 export type Path = keyof ApiConfig;
-export type Input = inferRouterInputs<AppRouter>;
-export type Output = inferRouterOutputs<AppRouter>;
+export type Input = { [K in keyof ApiConfig]: z.infer<ApiConfig[K]['req']> };
+export type Output = {
+  [K in keyof ApiConfig]: Shared.Output<z.infer<ApiConfig[K]['res']>>;
+};
 type OutputCallbacks<
   P extends Path = Path,
   O extends Output[Path] = Output[P],
@@ -23,7 +19,6 @@ type OutputCallbacks<
     res: O extends { code: infer C } ? (K extends C ? O : never) : never,
   ) => void;
 };
-type d = OutputCallbacks<'proj/public' | 'proj/joined' | 'proj/own'>;
 type ReqConfig<P extends Path = Path, I extends Input[Path] = Input[P]> = {
   path: P;
   input: I;
@@ -41,7 +36,7 @@ export function getApiURL(isDev: boolean, protocol = 'http') {
     : `${protocol}s://essai.bluebones.fun/api`;
 }
 export function createClient(
-  t: ReturnType<typeof createTRPCProxyClient<AppRouter>>,
+  t: CreateTRPCProxyClient<any>,
   options: {
     showTip(e: { text: string; color?: string }): void;
     token: {
@@ -89,7 +84,6 @@ export function createClient(
       [BizCode.Fail._value]: show('error'),
       [BizCode.Unauthorizen._value]: () => refreshToken(resend),
       ...callbacks,
-      //@ts-ignore
     })[output.code]?.(output);
     return output;
   }
@@ -102,7 +96,7 @@ export function createClient(
   /**请求器 */
   class Fetch<P extends Path> {
     path;
-    input;
+    input: Input[P];
     api;
     /**装饰器列表 */
     wrappers: ReqFnWrapper[] = [];

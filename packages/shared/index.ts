@@ -1,1 +1,1 @@
-import './types';
+/// <reference path="types/index.d.ts" />

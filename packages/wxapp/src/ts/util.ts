@@ -1,12 +1,11 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
-import type { AppRouter } from 'backend';
 import { each } from 'lodash-es';
 import { createClient, getApiURL } from 'shared/client';
 
 const accountInfo = wx.getAccountInfoSync();
 const envVersion = accountInfo.miniProgram.envVersion;
 export const client = createClient(
-  createTRPCProxyClient<AppRouter>({
+  createTRPCProxyClient({
     links: [
       //@ts-ignore
       httpBatchLink({

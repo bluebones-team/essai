@@ -10,6 +10,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@mdi/js": "^7.4.47",
     "lottie-web": "^5.12.2",
     "shared": "workspace:*",
     "vue": "^3.4.38",
@@ -18,7 +19,6 @@
     "vuetify": "^3.7.0"
   },
   "devDependencies": {
-    "@mdi/js": "^7.4.47",
     "@tsconfig/node18": "^18.2.4",
     "@types/node": "^18.19.44",
     "@vitejs/plugin-vue-jsx": "^4.0.1",
