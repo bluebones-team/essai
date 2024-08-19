@@ -15,9 +15,9 @@
   "dependencies": {
     "shared": "workspace:*",
     "@babel/runtime": "^7.25.0",
-    "@vue-mini/core": "^1.0.2",
+    "@vue-mini/core": "^1.0.3",
     "promise-polyfill": "^8.3.0",
-    "tdesign-miniprogram": "^1.5.0"
+    "tdesign-miniprogram": "^1.5.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -41,8 +41,8 @@
     "postcss": "^8.4.41",
     "postcss-load-config": "^6.0.1",
     "postcss-pxtorpx-pro": "^2.0.0",
-    "rollup": "^4.20.0",
-    "terser": "^5.31.3",
+    "rollup": "^4.21.0",
+    "terser": "^5.31.6",
     "tslib": "^2.6.3"
   },
   "browserslist": [

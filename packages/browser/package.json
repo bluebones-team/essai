@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.4",
-    "@types/node": "^18.19.44",
+    "@types/node": "^18.19.45",
     "@vitejs/plugin-vue-jsx": "^4.0.1",
     "@vue/tsconfig": "^0.4.0",
     "npm-run-all2": "^6.2.2",

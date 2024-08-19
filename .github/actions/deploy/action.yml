@@ -1,0 +1,49 @@
+# https://docs.github.com/zh/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+name: deploy
+description: 'Deploy a job to a remote server'
+inputs:
+  catchkey:
+    description: 'The key to cache the files'
+  cachepath:
+    description: 'The path to cache the files'
+  host:
+    description: 'The host to deploy to'
+  user:
+    description: 'The user to deploy as'
+  key:
+    description: 'The SSH private key to use'
+  job:
+    description: 'The job ID to deploy'
+  workspace:
+    description: 'The workspace to deploy to'
+  script:
+    description: 'The script to run after deployment, relative to the workspace'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/cache@v2
+      with:
+        key: env-${{hashFiles('bun.lockb')}}
+        path: ~/.bun
+    - uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: 1.1.22
+    - name: build
+      shell: bash
+      run: |
+        cd packages/${{inputs.job}}
+        bun i
+        bun run build
+    - name: deploy
+      uses: easingthemes/ssh-deploy@v5.0.3
+      with:
+        REMOTE_HOST: ${{inputs.host}}
+        REMOTE_USER: ${{inputs.user}}
+        SSH_PRIVATE_KEY: ${{inputs.key}}
+        SOURCE: './packages/${{inputs.job}}/dist/'
+        TARGET: ${{inputs.workspace}}
+        ARGS: '-avz --delete'
+        # SCRIPT_BEFORE: 'mkdir -p ${{inputs.workspace}}'
+        SCRIPT_AFTER: |
+          cd ${{inputs.workspace}}/..
+          bash prod.sh ${{inputs.job}}

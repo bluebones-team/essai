@@ -1,3 +1,7 @@
+/**
+ * @version 1.2.3
+ * @see https://github.com/vue-mini/create-vue-mini/blob/main/template/typescript/build.js
+ */
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +19,6 @@ import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import { green, bold } from 'kolorist';
-import typescript from '@rollup/plugin-typescript';
 
 let topLevelJobs = [];
 let bundleJobs = [];
@@ -45,14 +48,20 @@ async function resolvePeer(module) {
   }
 }
 
+const builtLibraries = [];
 const bundledModules = new Set();
 async function bundleModule(module) {
-  if (bundledModules.has(module)) return;
+  if (
+    bundledModules.has(module) ||
+    builtLibraries.some((library) => module.startsWith(library))
+  ) {
+    return;
+  }
   bundledModules.add(module);
 
   const peer = await resolvePeer(module);
   const bundle = await rollup({
-    input: module.replace(/^shared\/([a-z]+)/, 'shared/$1.ts'),
+    input: module,
     external: peer ? Object.keys(peer) : undefined,
     plugins: [
       commonjs(),
@@ -95,15 +104,15 @@ async function buildComponentLibrary(name) {
   const pkgPath = fileURLToPath(
     new URL(import.meta.resolve(`${name}/package.json`)),
   );
-  const modulePath = path.dirname(pkgPath);
+  const libPath = path.dirname(pkgPath);
   const { miniprogram } = await fs.readJson(pkgPath, 'utf8');
 
   let source = '';
   if (miniprogram) {
-    source = path.join(modulePath, miniprogram);
+    source = path.join(libPath, miniprogram);
   } else {
     try {
-      const dist = path.join(modulePath, 'miniprogram_dist');
+      const dist = path.join(libPath, 'miniprogram_dist');
       const stats = await fs.stat(dist);
       if (stats.isDirectory()) {
         source = dist;
@@ -115,6 +124,7 @@ async function buildComponentLibrary(name) {
 
   if (!source) return;
 
+  builtLibraries.push(name);
   const destination = path.resolve('dist', 'miniprogram_npm', name);
   await fs.copy(source, destination);
 
@@ -278,21 +288,20 @@ async function dev() {
 async function prod() {
   await fs.remove('dist');
   await scanDependencies();
-  const watcher = chokidar
-    .watch(['src'], {
-      ignored: ['**/.{gitkeep,DS_Store}'],
-    })
-    .on('add', (filePath) => {
-      const promise = cb(filePath);
-      topLevelJobs.push(promise);
-    })
-    .on('ready', async () => {
-      const promise = watcher.close();
-      topLevelJobs.push(promise);
-      await Promise.all(topLevelJobs);
-      await Promise.all(bundleJobs);
-      console.log(bold(green(`构建完成，耗时：${Date.now() - startTime}ms`)));
-    });
+  const watcher = chokidar.watch(['src'], {
+    ignored: ['**/.{gitkeep,DS_Store}'],
+  });
+  watcher.on('add', (filePath) => {
+    const promise = cb(filePath);
+    topLevelJobs.push(promise);
+  });
+  watcher.on('ready', async () => {
+    const promise = watcher.close();
+    topLevelJobs.push(promise);
+    await Promise.all(topLevelJobs);
+    await Promise.all(bundleJobs);
+    console.log(bold(green(`构建完成，耗时：${Date.now() - startTime}ms`)));
+  });
 }
 
 if (__PROD__) {

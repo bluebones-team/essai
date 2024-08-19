@@ -3,18 +3,18 @@ import {
   type inferParser,
   type ProcedureBuilder,
 } from '@trpc/server';
+import { observable } from '@trpc/server/observable';
 import { mapValues } from 'lodash-es';
 import apiConfig, {
   type ApiConfig,
   type ApiRecord,
   type ApiType,
 } from 'shared/api';
-import { shared } from 'shared/schema';
+import type { shared } from 'shared/schema';
 import { zocker } from 'zocker';
 import { z } from 'zod';
 import { output, type Context, type Middleware } from '.';
 import { auth } from './middleware';
-import { observable } from '@trpc/server/observable';
 
 export const t = initTRPC.context<Context>().create({});
 const proc = t.procedure;

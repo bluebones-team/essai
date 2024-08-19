@@ -3,9 +3,10 @@ import type { CreateHTTPContextOptions } from '@trpc/server/adapters/standalone'
 import type { Input, Output } from 'shared/client';
 import { BizCode } from 'shared/enum';
 import { createKoaMiddleware } from 'trpc-koa-adapter';
-import { t } from './api';
-import apiRouter from './implement';
+import { t, toRouter } from './api';
+// import apiRouter from './implement';
 
+const apiRouter = toRouter({});
 export const appRouter = t.mergeRouters(
   apiRouter,
   t.router({ test: t.procedure.query(() => 'hello world') }), // test

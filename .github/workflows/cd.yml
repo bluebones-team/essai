@@ -1,0 +1,62 @@
+name: cd
+on:
+  # push:
+  #     branches: [main]
+  workflow_dispatch:
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: cache
+        uses: actions/cache@v2
+        with:
+          key: env-${{hashFiles('bun.lockb')}}
+          path: ~/.bun
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.1.22
+      - if: ${{steps.cache.outputs.cache-hit}} != 'true'
+        name: dep
+        run: bun i
+  backend:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy
+        with:
+          catchkey: env-${{hashFiles('bun.lockb')}}
+          cachepath: ~/.bun
+          host: ${{secrets.SERVER_HOST}}
+          user: ${{secrets.SERVER_USERNAME}}
+          key: ${{secrets.SSH_PRIVATE_KEY}}
+          job: ${{github.job}}
+          workspace: ${{secrets.BACKEND}}
+  browser:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy
+        with:
+          catchkey: env-${{hashFiles('bun.lockb')}}
+          cachepath: ~/.bun
+          host: ${{secrets.SERVER_HOST}}
+          user: ${{secrets.SERVER_USERNAME}}
+          key: ${{secrets.SSH_PRIVATE_KEY}}
+          job: ${{github.job}}
+          workspace: ${{secrets.BROWSER}}
+
+  remove-old-runs:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 6

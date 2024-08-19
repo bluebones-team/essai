@@ -9,13 +9,6 @@ import { usePopup } from './hook';
 export const showProgressbar = ref(false);
 /**用户数据 */
 export const udata = ref<User.Own>();
-setTimeout(() =>
-  new client('login', { data: { phone: 0, pwd: '' } }).send({
-    0(res) {
-      udata.value = res.data;
-    },
-  }),
-);
 /**用户设置 */
 export const setting = reactive({
   /**显示 */
@@ -47,7 +40,14 @@ export const setting = reactive({
 });
 /**消息 */
 export const messages = ref<Shared.Message[]>([]);
+
+// 初始化
 setTimeout(() => {
+  new client('login', { data: { phone: 0, pwd: '' } }).send({
+    0(res) {
+      udata.value = res.data;
+    },
+  });
   new client('notify/list', { pn: 1, ps: 20 }).send({
     0(res) {
       messages.value = res.data;
