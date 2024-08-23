@@ -13,7 +13,8 @@ export default defineComponent(
           items: [
             comp.switch(
               [setting.privacy, 'allowAddToLib'],
-              '允许被招募者收集到参与者库',
+              '允许被收集',
+              '启用后，招募者可以将您收集到其参与者库中，以便后续向您推送项目',
             ),
           ],
         },

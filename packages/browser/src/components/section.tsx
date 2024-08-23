@@ -23,7 +23,7 @@ function Title(item: Props<typeof Section>['items'][number]) {
       {item.title && (
         <VCardTitle
           class={{
-            'text-subtitle-1 font-weight-bold py-4': true,
+            'text-subtitle-1 font-weight-bold py-4 text-wrap': true,
             'pb-2': !item.horizontal || item.subtitle,
           }}
         >
@@ -34,7 +34,9 @@ function Title(item: Props<typeof Section>['items'][number]) {
         </VCardTitle>
       )}
       {item.subtitle && (
-        <VCardSubtitle class="pb-4 text-body-2">{item.subtitle}</VCardSubtitle>
+        <VCardSubtitle class="pb-4 text-body-2 text-wrap">
+          {item.subtitle}
+        </VCardSubtitle>
       )}
     </div>
   );

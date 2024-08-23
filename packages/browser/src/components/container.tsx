@@ -3,7 +3,7 @@ import { defineComponent, type Component } from 'vue';
 import { VCol, VContainer, VRow } from 'vuetify/components/VGrid';
 
 export type ContainerDisplay = {
-  cols?: MaybeGetter<number>;
+  cols?: MaybeGetter<number | undefined>;
   comp: Component;
 }[][];
 

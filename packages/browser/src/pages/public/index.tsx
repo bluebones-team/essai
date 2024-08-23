@@ -16,8 +16,14 @@ import { client } from '~/ts//client';
 import { usePopup, useProjData } from '~/ts/hook';
 import { injectSymbol, snackbar } from '~/ts/state';
 
-const { proj, fetchProjList, filter, fetchProjRange, simpleSearch } =
-  useProjData('public');
+const {
+  proj,
+  fetchProjList,
+  filter,
+  fetchProjRange,
+  simpleSearch,
+  advancedSearch,
+} = useProjData('public');
 const detail_dialog = usePopup(Dialog, () => ({ content: _Detail }));
 const join_dialog = usePopup(Dialog, () => ({
   card: { title: '选择参与角色' },
@@ -52,6 +58,10 @@ const search_dialog = usePopup(DialogForm, () => ({
   form: { size: 'large' as const },
   submitText: '确认',
   content: () => <AdvancedFilter v-model={filter.data} range={filter.range} />,
+  onPass() {
+    advancedSearch();
+    search_dialog.close();
+  },
 }));
 watchEffect(() => {
   if (proj.data) detail_dialog.show();
@@ -97,27 +107,35 @@ export default defineComponent({
     provide(injectSymbol.editable, { value: false });
     const { mobile, xs } = useDisplay();
     const mobileHeaders: TableHeader<Project['public']['Preview']>[] = [
-      { title: '标题', key: 'title', maxWidth: '15rem' },
+      { title: '标题', key: 'title', maxWidth: '20rem' },
       {
         title: '类型',
         key: 'type',
-        width: '6rem',
+        // width: '6rem',
         value: (item) => (
-          <VChip color={ProjectType[item.type].color}>
+          <VChip key={item.type} color={ProjectType[item.type].color}>
             {ProjectType[item.type]._name}
           </VChip>
         ),
+        //@ts-ignore
+        sort: (a, b) => a.key - b.key,
       },
       {
         title: '报酬',
         key: `recruitments[${filter.data.rtype}].fee` as any,
-        width: '6rem',
+        minWidth: '6rem',
         value: (item) => {
           filter.data.rtype ??= RecruitmentType.Subject._value;
-          return item.recruitments[filter.data.rtype]
-            ? `￥ ${item.recruitments[filter.data.rtype]?.fee}`
-            : '不招';
+          return (
+            <p key={item.recruitments[filter.data.rtype]?.fee}>
+              {item.recruitments[filter.data.rtype]
+                ? `￥ ${item.recruitments[filter.data.rtype]?.fee}`
+                : '不招'}
+            </p>
+          );
         },
+        //@ts-ignore
+        sort: (a, b) => a.key - b.key,
       },
     ];
     return () => (

@@ -11,6 +11,7 @@ import { SectionGroup } from '~/components/section-group';
 import { OtpInput } from '~/components/forms/otp-input';
 import { client } from '~/ts//client';
 import { udata } from '~/ts/state';
+import { useDisplay } from 'vuetify';
 
 /**更改密码 */
 function passwordEditInput() {
@@ -74,10 +75,8 @@ function phoneEditInput() {
 
 export default defineComponent(
   () => {
-    const state = reactive({
-      showPwd: false,
-      showOtp: false,
-    });
+    const { xs } = useDisplay();
+    const state = reactive({ showPwd: false, showOtp: false });
     const sections = computed(() => {
       if (!udata.value) return [];
       return [
@@ -123,7 +122,7 @@ export default defineComponent(
           items: udata.value.emails.map((e, i) => ({
             title: e,
             // subtitle: i ? '该邮箱用于接收消息' : '该邮箱用于密码重置',
-            horizontal: true,
+            horizontal: !xs.value,
             comp: () => (
               <div class="d-flex">
                 <VBtn

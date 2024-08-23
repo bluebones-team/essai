@@ -120,6 +120,7 @@ const _Lib = () => {
                 density="compact"
                 variant="outlined"
                 divided
+                mandatory
               >
                 {proj.data?.recruitments.map(({ rtype }) => {
                   const e = RecruitmentType[rtype];

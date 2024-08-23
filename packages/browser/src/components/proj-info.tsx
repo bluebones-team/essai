@@ -118,10 +118,11 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
 function useEventDisplay(events: Project['Data']['events']): ContainerDisplay {
   const editable = inject(injectSymbol.editable) ?? { value: false };
   const event = events[0];
+  const { xs } = useDisplay();
   return [
     [
       {
-        cols: 6,
+        cols: () => (xs.value ? 12 : 6),
         comp: () => (
           <DatePicker
             v-model={event[0]}
@@ -145,13 +146,14 @@ function useEventDisplay(events: Project['Data']['events']): ContainerDisplay {
 function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
   recruitments: T,
   type: RecruitmentType,
-): ContainerDisplay {
+): MaybeGetter<ContainerDisplay> {
   const data = recruitments.find((e) => e.rtype === type);
   if (!data) return [];
-  const { mobile } = useDisplay();
-  return [
+  const { xs } = useDisplay();
+  return () => [
     [
       {
+        cols: () => (xs.value ? 6 : 4),
         comp: () => (
           <VTextField
             v-model={data.contents[0]['total']}
@@ -162,7 +164,7 @@ function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
         ),
       },
       {
-        cols: () => (mobile.value ? 6 : 4),
+        cols: () => (xs.value ? 6 : 4),
         comp: () => (
           <VTextField
             v-model={data.fee}
@@ -214,7 +216,8 @@ function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
         ),
       },
     ],
-    [...Array(data.durations.length).keys()].map((e, i) => ({
+    data.durations.map((e, i) => ({
+      cols: () => (xs.value ? 12 : void 0),
       comp: () => (
         <VTextField
           v-model={data.durations[i]}

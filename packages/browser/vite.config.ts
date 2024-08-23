@@ -104,5 +104,5 @@ export default defineConfig(({ command, mode }) => ({
       },
     },
   },
-  server: {},
+  server: { host: '0.0.0.0' },
 }));

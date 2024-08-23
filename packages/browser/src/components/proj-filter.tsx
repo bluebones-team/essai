@@ -1,13 +1,12 @@
 import { mdiMagnify, mdiTune } from '@mdi/js';
 import { ProjectType, RecruitmentType } from 'shared/enum';
-import { defineComponent } from 'vue';
+import { defineComponent, useModel } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VIcon } from 'vuetify/components/VIcon';
 import { VRangeSlider } from 'vuetify/components/VRangeSlider';
 import { VSelect } from 'vuetify/components/VSelect';
 import { VTextField } from 'vuetify/components/VTextField';
 import { Container } from '~/components/container';
-import { useModel } from 'vue';
 import { useDefaults } from '~/ts/hook';
 
 const NumInp = defineComponent(
@@ -40,11 +39,12 @@ export const SimpleFilter = defineComponent(
     return () => (
       <VTextField
         v-model={model.value}
+        type="search"
         class="mx-4 w-100"
         variant="solo"
         placeholder="搜索项目"
         hideDetails
-        onKeydown={(e: KeyboardEvent) => e.code === 'Enter' && p.onSearch()}
+        onKeydown={(e: KeyboardEvent) => e.key === 'Enter' && p.onSearch()}
         v-slots={{
           'append-inner': () => [
             <VIcon
@@ -83,7 +83,12 @@ export const AdvancedFilter = defineComponent(
         {
           cols: 12,
           comp: () => (
-            <VTextField v-model={model.value.search} label="关键词" clearable />
+            <VTextField
+              v-model={model.value.search}
+              label="搜索"
+              clearable
+              autofocus
+            />
           ),
         },
         ...(

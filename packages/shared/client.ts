@@ -32,7 +32,7 @@ export type CustomContext = Partial<{
 
 export function getApiURL(isDev: boolean, protocol = 'http') {
   return isDev
-    ? `${protocol}://localhost:3001`
+    ? `${protocol}://${location.hostname}:3001`
     : `${protocol}s://essai.bluebones.fun/api`;
 }
 export function createClient(

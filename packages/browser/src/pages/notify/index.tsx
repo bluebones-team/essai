@@ -81,31 +81,40 @@ function _Detail() {
   );
 }
 
-// 自动已读
-let timer: null | number = null;
-watchEffect(() => {
-  const msg = state.message;
-  if (!msg) return;
-  if (typeof timer === 'number') window.clearTimeout(timer);
-  timer = window.setTimeout(() => {
-    new client('notify/read', { uid: msg.uid, mid: msg.mid }).send({
-      0() {
-        msg.has_read = true;
-      },
-    });
-    timer = null;
-  }, setting.notify.readDelay * 1e3);
-});
-
 export default defineComponent(
   function () {
     const { mobile } = useDisplay();
     const showNav = ref(!mobile.value);
+    // 自动已读
+    let timer = null as null | number;
+    watchEffect(() => {
+      const msg = state.message;
+      if (!msg) return;
+      if (typeof timer === 'number') window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (mobile.value && !detail_dialog.isShow.value) return;
+        new client('notify/read', { uid: msg.uid, mid: msg.mid }).send({
+          0() {
+            msg.has_read = true;
+            timer = null;
+          },
+        });
+      }, setting.notify.readDelay * 1e3);
+    });
+    // 自动关闭 Nav
+    watchEffect(() => {
+      state.type;
+      if (mobile.value) showNav.value = false;
+    });
     return () => (
       <div class="v-main">
         {mobile.value && (
           <VAppBar
-            title="消息中心"
+            title={
+              state.type === totalEnum
+                ? '所有消息'
+                : MessageType[state.type].title
+            }
             icon
             v-slots={{
               prepend: () => (
@@ -116,7 +125,7 @@ export default defineComponent(
                 />
               ),
             }}
-          ></VAppBar>
+          />
         )}
         <VNavigationDrawer v-model={showNav.value}>
           <List

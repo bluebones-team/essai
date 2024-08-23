@@ -18,6 +18,7 @@ import replace from '@rollup/plugin-replace';
 import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import typescript from 'rollup-plugin-typescript2';
 import { green, bold } from 'kolorist';
 
 let topLevelJobs = [];
@@ -71,7 +72,8 @@ async function bundleModule(module) {
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
         },
       }),
-      resolve(),
+      resolve({ extensions: ['.mjs', '.js', '.json', '.node', '.ts'] }),
+      typescript(),
       __PROD__ && terser(terserOptions),
     ].filter(Boolean),
   });

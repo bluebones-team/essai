@@ -13,28 +13,13 @@ export const comp = {
         <VSwitch
           v-model={data[key]}
           density="compact"
-          style="--v-input-control-height: 0px"
+          style={{ '--v-input-control-height': '0px', width: 'max-content' }}
           hideDetails
           inset
         />
       ),
     };
   },
-  text: (
-    text: string | number,
-    title: string,
-    subtitle?: string,
-    onClick?: () => any,
-  ) => ({
-    title,
-    subtitle,
-    horizontal: true,
-    comp: () => (
-      <p class="text-subtitle-1" onClick={onClick}>
-        {text}
-      </p>
-    ),
-  }),
 };
 export const panel = {
   content: (props = {}) => (

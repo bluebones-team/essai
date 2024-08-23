@@ -3,9 +3,8 @@ import { defineComponent } from 'vue';
 export default defineComponent({
   name: 'About',
   setup() {
-    location.href = import.meta.env.DEV
-      ? '/'
-      : `https://${location.host}/about`;
+    const domain = location.hostname.match(/[a-z]+\.[a-z]+$/)?.[0];
+    location.href = domain ? `https://${domain}/about` : '/';
     return () => null;
   },
 });

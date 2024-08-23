@@ -196,6 +196,7 @@ const _PtcList = () => {
               density="compact"
               variant="outlined"
               divided
+              mandatory
             >
               {proj.data?.recruitments.map(({ rtype }) => {
                 const e = RecruitmentType[rtype];
@@ -269,6 +270,7 @@ export default defineComponent({
                     density="compact"
                     variant="outlined"
                     divided
+                    mandatory
                   >
                     {ProjectState._items.map((e) => (
                       <VBtn value={e._value}>{e.title}</VBtn>

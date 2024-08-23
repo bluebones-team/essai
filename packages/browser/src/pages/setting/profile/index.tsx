@@ -22,7 +22,6 @@ import { dateFormat } from '~/ts/date';
 import { usePopup } from '~/ts/hook';
 import { storage, udata } from '~/ts/state';
 import { catcher } from '~/ts/util';
-import { comp } from '../components/util';
 
 /**编辑框 */
 function editInput(data: { name: string; face: string }) {
@@ -169,8 +168,16 @@ export default defineComponent(
         {
           title: '身份认证',
           items: [
-            comp.text(udata.value.auth.realname ?? '未实名', '实名认证'),
-            comp.text(udata.value.emails[0], '招募者认证'),
+            {
+              title: '实名认证',
+              subtitle: udata.value.auth.realname ?? '未实名',
+              horizontal: true,
+            },
+            {
+              title: '招募者认证',
+              subtitle: udata.value.emails[0],
+              horizontal: true,
+            },
           ],
         },
       ];

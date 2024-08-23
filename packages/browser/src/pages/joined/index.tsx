@@ -64,6 +64,7 @@ export default defineComponent({
                   density="compact"
                   variant="outlined"
                   divided
+                  mandatory
                 >
                   {RecruitmentType._items.map((e) => (
                     <VBtn value={e._value}>{e.title}</VBtn>

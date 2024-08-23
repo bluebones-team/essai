@@ -1,5 +1,10 @@
 import { defineComponent, ref } from 'vue';
-import { RouterView, type RouteMeta, type RouteRecordRaw } from 'vue-router';
+import {
+  RouterView,
+  useRoute,
+  type RouteMeta,
+  type RouteRecordRaw,
+} from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { VAppBar, VAppBarNavIcon } from 'vuetify/components/VAppBar';
 import { VMain } from 'vuetify/components/VMain';
@@ -41,11 +46,12 @@ export default defineComponent(
   function () {
     const { mobile } = useDisplay();
     const showNav = ref(!mobile.value);
+    const route = useRoute();
     return () => (
       <div class="v-main">
         {mobile.value && (
           <VAppBar
-            title="个人中心"
+            title={route.meta.btnProps?.tip}
             icon
             v-slots={{
               prepend: () => (
@@ -62,8 +68,8 @@ export default defineComponent(
           <List type="nav" items={navItems} />
         </VNavigationDrawer>
         <VMain class="h-100 overflow-auto">
-          <RouterView>
-            {
+          <RouterView
+            v-slots={
               {
                 default: ({ Component, route }) => [
                   Component && (
@@ -73,7 +79,7 @@ export default defineComponent(
                 ],
               } satisfies Slots<typeof RouterView>
             }
-          </RouterView>
+          ></RouterView>
         </VMain>
       </div>
     );
