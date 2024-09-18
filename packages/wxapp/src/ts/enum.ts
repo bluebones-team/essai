@@ -1,4 +1,4 @@
-import { toEnum, type Enum } from 'shared/enum';
+import { toEnum, type Enum } from 'shared/data';
 
 export const Tabbar = toEnum([
   ['join', { label: '报名', icon: 'home' }],

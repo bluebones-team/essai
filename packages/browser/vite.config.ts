@@ -28,9 +28,20 @@ export default defineConfig(({ command, mode }) => ({
       manifest: {
         name: 'Essai',
         short_name: 'Essai',
-        description: '线下实验招募平台',
+        description: '蓝骨头招募',
         theme_color: '#ffffff',
-        icons: [],
+        icons: [
+          {
+            src: '/icons/android-chrome-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/icons/android-chrome-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
       },
     }),
     visualizer({
@@ -73,7 +84,7 @@ export default defineConfig(({ command, mode }) => ({
     },
   },
   define: {
-    __VUE_OPTIONS_API__: true,
+    __VUE_OPTIONS_API__: false,
     __VUE_PROD_DEVTOOLS__: command === 'serve',
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: command === 'serve',
   },

@@ -26,9 +26,9 @@ const createClient = (): AliyunClient => {
 };
 const smsClient = createClient();
 
-export const sendCodeSms = async (phone: number, code: number) => {
+export const sendCodeSms = async (phone: string, code: number) => {
   const sendSmsRequest = new SendSmsRequest({
-    phoneNumbers: phone.toString(),
+    phoneNumbers: phone,
     signName: process.env['SIGN'],
     templateCode: process.env['CODE_TEMPLATE_ID'],
     templateParam: `{"code":${code}}`,

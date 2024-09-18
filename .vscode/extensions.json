@@ -2,6 +2,7 @@
   "recommendations": [
     "oven.bun-vscode",
     "esbenp.prettier-vscode",
-    "github.vscode-github-actions"
+    "github.vscode-github-actions",
+    "vitest.explorer"
   ]
 }

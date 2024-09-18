@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import type { Middleware } from 'koa';
 import pinoLogger from 'koa-pino-logger';
-import { pick } from 'lodash-es';
 import type { PrettyOptions } from 'pino-pretty';
+import { map, pick } from 'shared';
 import redis from '~/client/redis';
 import { SystemError } from './error';
 
@@ -101,11 +101,7 @@ export const antiSpider: Middleware = async (ctx, next) => {
     await redis.set(nonce, 1, { EX: NONCE_EXPIRE });
   }
   // 检查签名
-  const sortedParams: { [key: string]: string } = { timestamp, nonce };
-  const sortedKeys = Object.keys(sortedParams).sort();
-  const baseString = sortedKeys
-    .map((key) => `${key}=${sortedParams[key]}`)
-    .join('&');
+  const baseString = map({ timestamp, nonce }, (v, k) => `${k}=${v}`).join('&');
   const _hash = crypto
     .createHmac('sha256', SECRET_KEY)
     .update(baseString)

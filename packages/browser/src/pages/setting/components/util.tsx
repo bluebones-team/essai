@@ -37,11 +37,11 @@ export const panel = {
     </p>
   ),
   toComp(text: string, props?: {}) {
-    return ({ toggle, isSelected }: any) => (
+    return ({ toggle, isSelected }: any) => [
       <div onClick={toggle}>
         {this.content(props)}
         {this.text(text, isSelected)}
-      </div>
-    );
+      </div>,
+    ];
   },
 };

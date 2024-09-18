@@ -19,8 +19,7 @@ export const Pic = defineComponent(function (props: {
         {...{ src: props.src, lazySrc: props.loadingSrc }}
         aspectRatio="1"
         cover
-      >
-        {{
+        v-slots={{
           placeholder: () => (
             <div class="d-flex align-center justify-center h-100">
               <VProgressCircular
@@ -37,7 +36,7 @@ export const Pic = defineComponent(function (props: {
               <VIcon color="error" icon={mdiAlertOutline} size={props.size} />
             ),
         }}
-      </VImg>
+      />
     </VAvatar>
   );
 });

@@ -1,5 +1,5 @@
 import 'vuetify/styles';
-import type { Role, Theme } from 'shared/enum';
+import type { Role, Theme } from 'shared/data';
 import { createVuetify, type ThemeDefinition } from 'vuetify';
 import { md3 } from 'vuetify/blueprints';
 import { Ripple, Tooltip } from 'vuetify/directives';

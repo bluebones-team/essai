@@ -1,6 +1,6 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
-import { each } from 'lodash-es';
-import { createClient, getApiURL } from 'shared/client';
+import { each } from 'shared';
+import { createClient, getApiURL } from 'shared/router';
 
 const accountInfo = wx.getAccountInfoSync();
 const envVersion = accountInfo.miniProgram.envVersion;

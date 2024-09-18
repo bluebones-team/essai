@@ -1,3 +1,4 @@
+import { mdiInformationOutline } from '@mdi/js';
 import {
   defineComponent,
   useModel,
@@ -7,10 +8,12 @@ import {
   type TdHTMLAttributes,
   type VNode,
 } from 'vue';
+import { VAlert } from 'vuetify/components/VAlert';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VChip } from 'vuetify/components/VChip';
 import { VDataTableVirtual } from 'vuetify/components/VDataTable';
 import { VItem, VItemGroup } from 'vuetify/components/VItemGroup';
+import { VToolbar } from 'vuetify/components/VToolbar';
 import { Ripple } from 'vuetify/directives';
 
 export type TableHeader<T> = {
@@ -20,11 +23,13 @@ export type TableHeader<T> = {
   cellProps?: TdHTMLAttributes;
   [x: string]: any;
 };
-export type TableSlots = {
-  toolbar?: () => void;
-  groupChip?: (item: any) => VNode;
-  noData?: () => void;
-};
+export type TableSlots<
+  T extends Slots<VDataTableVirtual> = Slots<VDataTableVirtual>,
+> = Partial<{
+  toolbar: T['top'];
+  groupChip(item: any): VNode;
+  noData: T['no-data'];
+}>;
 export const Table = defineComponent(function <
   T extends {},
   S extends string,
@@ -69,7 +74,7 @@ export const Table = defineComponent(function <
     ],
   });
   const tableSlots: Slots<VDataTableVirtual> = {
-    top: (e) => slots.toolbar?.() ?? [],
+    top: (e) => [<VToolbar>{slots.toolbar?.(e)}</VToolbar>],
     'header.data-table-group': (e) => [],
     'group-header': ({ item, columns, toggleGroup, isGroupOpen }) => [
       <tr>
@@ -92,7 +97,9 @@ export const Table = defineComponent(function <
     item: ({ item }) => [
       <VItem value={item} v-slots={itemSlots(item)}></VItem>,
     ],
-    'no-data': () => slots.noData?.() ?? [],
+    'no-data': () => [
+      <VAlert icon={mdiInformationOutline}>{slots.noData?.()}</VAlert>,
+    ],
   };
   return () => (
     <VItemGroup v-model={model.value} multiple={p.multiple}>

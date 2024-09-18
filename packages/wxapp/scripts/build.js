@@ -1,10 +1,10 @@
 /**
- * @version 1.2.3
- * @see https://github.com/vue-mini/create-vue-mini/blob/main/template/typescript/build.js
+ * @version v1.2.5
+ * https://github.com/vue-mini/create-vue-mini
+ * 请谨慎修改此文件，改动过多可能会导致你后续升级困难。
  */
 import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 import fs from 'fs-extra';
 import chokidar from 'chokidar';
 import babel from '@babel/core';
@@ -18,8 +18,8 @@ import replace from '@rollup/plugin-replace';
 import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-import typescript from 'rollup-plugin-typescript2';
 import { green, bold } from 'kolorist';
+import { getPackageInfo } from 'local-pkg';
 
 let topLevelJobs = [];
 let bundleJobs = [];
@@ -33,22 +33,6 @@ const terserOptions = {
   format: { comments: false },
 };
 
-async function resolvePeer(module) {
-  if (!module) return;
-
-  try {
-    const pkg = await fs.readJson(
-      fileURLToPath(new URL(import.meta.resolve(`${module}/package.json`))),
-      'utf8',
-    );
-    return pkg.peerDependencies;
-  } catch {
-    const arr = module.split('/');
-    arr.pop();
-    return resolvePeer(arr.join('/'));
-  }
-}
-
 const builtLibraries = [];
 const bundledModules = new Set();
 async function bundleModule(module) {
@@ -60,10 +44,12 @@ async function bundleModule(module) {
   }
   bundledModules.add(module);
 
-  const peer = await resolvePeer(module);
+  const {
+    packageJson: { peerDependencies },
+  } = await getPackageInfo(module);
   const bundle = await rollup({
     input: module,
-    external: peer ? Object.keys(peer) : undefined,
+    external: peerDependencies ? Object.keys(peerDependencies) : undefined,
     plugins: [
       commonjs(),
       replace({
@@ -72,8 +58,7 @@ async function bundleModule(module) {
           'process.env.NODE_ENV': JSON.stringify(NODE_ENV),
         },
       }),
-      resolve({ extensions: ['.mjs', '.js', '.json', '.node', '.ts'] }),
-      typescript(),
+      resolve(),
       __PROD__ && terser(terserOptions),
     ].filter(Boolean),
   });
@@ -103,18 +88,17 @@ function traverseAST(ast, babelOnly = false) {
 }
 
 async function buildComponentLibrary(name) {
-  const pkgPath = fileURLToPath(
-    new URL(import.meta.resolve(`${name}/package.json`)),
-  );
-  const libPath = path.dirname(pkgPath);
-  const { miniprogram } = await fs.readJson(pkgPath, 'utf8');
+  const {
+    rootPath,
+    packageJson: { miniprogram },
+  } = await getPackageInfo(name);
 
   let source = '';
   if (miniprogram) {
-    source = path.join(libPath, miniprogram);
+    source = path.join(rootPath, miniprogram);
   } else {
     try {
-      const dist = path.join(libPath, 'miniprogram_dist');
+      const dist = path.join(rootPath, 'miniprogram_dist');
       const stats = await fs.stat(dist);
       if (stats.isDirectory()) {
         source = dist;

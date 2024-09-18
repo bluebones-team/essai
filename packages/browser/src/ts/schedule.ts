@@ -1,5 +1,6 @@
 import { day, hour, min } from '~/ts/date';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep } from 'shared';
+import { error } from './util';
 
 /**时间段 */
 export type Period = {
@@ -9,7 +10,7 @@ export type Period = {
 
 /**判断日程间是否有冲突 */
 export function hasConflict(A: Period, B: Period) {
-  if (A === B) throw '2个参数指向同一对象';
+  if (A === B) return error('2个参数指向同一对象');
   return (
     new Date(A.start) < new Date(B.end) && new Date(B.start) < new Date(A.end)
   );

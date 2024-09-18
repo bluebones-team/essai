@@ -1,57 +1,60 @@
+import { groupBy, map } from 'shared';
 import { defineComponent, ref } from 'vue';
-import {
-  RouterView,
-  useRoute,
-  type RouteMeta,
-  type RouteRecordRaw,
-} from 'vue-router';
+import { RouterView, useRoute, useRouter } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { VAppBar, VAppBarNavIcon } from 'vuetify/components/VAppBar';
 import { VMain } from 'vuetify/components/VMain';
 import { VNavigationDrawer } from 'vuetify/components/VNavigationDrawer';
 import { List } from '~/components/list';
-import { routes } from '~/ts/route';
-import { groupSort } from '~/ts/util';
 
-const navRoutes =
-  routes
-    .find((e) => e.path === '/setting')
-    ?.children?.filter(
-      (
-        e,
-      ): e is RouteRecordRaw & {
-        meta: { btnProps: NonNullable<RouteMeta['btnProps']> };
-      } => !!e.meta?.btnProps,
-    ) ?? [];
-if (navRoutes.length === 0) {
-  console.warn('设置页面: 找不到导航子路由');
+function useNavItems() {
+  const routes = useRouter().getRoutes();
+  const navRoutes = routes.filter(
+    (e) => e.path.startsWith('/setting/') && !!e.meta?.nav,
+  ) as NavRoute[];
+  if (navRoutes.length === 0) {
+    console.warn('设置页面: 找不到导航子路由');
+  }
+  const groupName = { 0: '未知分组', 1: '应用设置', 2: '用户信息' };
+  return map(
+    groupBy(navRoutes, (e) => e.meta.nav.groupOrder ?? 0),
+    (routes, groupOrder) => [
+      //@ts-ignore
+      { type: 'subheader', title: groupName[groupOrder] },
+      ...routes
+        .toSorted((a, b) => (a.meta.nav.order ?? 0) - (b.meta.nav.order ?? 0))
+        .map(({ path, meta }) => ({
+          key: path,
+          to: path,
+          title: meta!.nav!.tip,
+          prependIcon: meta!.nav!.icon,
+        })),
+    ],
+  ).flat();
 }
-const groupName = { 0: '未知分组', 1: '应用设置', 2: '用户信息' };
-const navItems = groupSort(
-  navRoutes,
-  (e) => e.meta.btnProps.groupOrder ?? 0,
-  (e) => e.meta.btnProps.order ?? 0,
-).flatMap(([groupOrder, routes]) => [
-  //@ts-ignore
-  { type: 'subheader', title: groupName[groupOrder] },
-  ...routes.map(({ path, meta }) => ({
-    key: path,
-    to: path,
-    title: meta!.btnProps!.tip,
-    prependIcon: meta!.btnProps!.icon,
-  })),
-]);
 
+export const route: SupplyRoute = {
+  redirect(to) {
+    const [norm] = to.matched;
+    if (norm.path !== '/setting') return '/404';
+    const subRoute = norm.children.find((raw) => {
+      const p = raw.meta?.nav;
+      return p && p.groupOrder === 1 && p.order === 1;
+    });
+    return subRoute ? norm.path + '/' + subRoute.path : '/404';
+  },
+};
 export default defineComponent(
   function () {
     const { mobile } = useDisplay();
     const showNav = ref(!mobile.value);
     const route = useRoute();
+    const navItems = useNavItems();
     return () => (
       <div class="v-main">
         {mobile.value && (
           <VAppBar
-            title={route.meta.btnProps?.tip}
+            title={route.meta.nav?.tip}
             icon
             v-slots={{
               prepend: () => (

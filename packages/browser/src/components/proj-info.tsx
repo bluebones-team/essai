@@ -1,6 +1,7 @@
 import { mdiArrowLeft } from '@mdi/js';
-import { ProjectType, RecruitmentType } from 'shared/enum';
-import { r } from 'shared/valid';
+import { ProjectType, RecruitmentType } from 'shared/data';
+import { useValidator } from 'shared';
+import { project } from 'shared/data';
 import { computed, defineComponent, inject, reactive, useModel } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
@@ -10,18 +11,24 @@ import { VTextField } from 'vuetify/components/VTextField';
 import { VTextarea } from 'vuetify/components/VTextarea';
 import { VToolbar, VToolbarTitle } from 'vuetify/components/VToolbar';
 import { VScrollYReverseTransition } from 'vuetify/components/transitions';
+import { VDateInput } from 'vuetify/labs/VDateInput';
 import { Container, type ContainerDisplay } from '~/components/container';
-import { DatePicker } from '~/components/date-picker';
 import { Form } from '~/components/form';
 import { Section } from '~/components/section';
 import { useDefaults } from '~/ts/hook';
-import { injectSymbol } from '~/ts/state';
+import { injection } from '~/ts/state';
+import { toComputed } from '~/ts/util';
+
+const projectValid = useValidator(project.public.data);
+const contentValid = useValidator(project.recruitment.shape.contents.element);
+const recruitmentValid = useValidator(project.recruitment);
+const positionValid = useValidator(project.public.data.shape.position);
 
 const FormSection = defineComponent(function (
   p: {
     title: string;
     subtitle?: string;
-    display: MaybeGetter<ContainerDisplay>;
+    display: ContainerDisplay;
   } & {
     modelValue?: boolean;
     'onUpdate:modelValue'?: (value: boolean) => void;
@@ -55,7 +62,7 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
             v-model={data.title}
             label="项目名称"
             maxlength="20"
-            rules={r.str().min(5).max(20).name().c}
+            rules={projectValid.title}
             counter
           />
         ),
@@ -71,7 +78,7 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
               value: e._value,
             }))}
             itemProps
-            rules={r.num().c}
+            rules={projectValid.type}
             persistentHint
             hint={ProjectType[data.type].title}
           />
@@ -90,7 +97,11 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
       {
         cols: 12,
         comp: () => (
-          <VTextField v-model={data.position.detail} label="详细地址" />
+          <VTextField
+            v-model={data.position.detail}
+            label="详细地址"
+            rules={positionValid.detail}
+          />
         ),
       },
       // {
@@ -106,7 +117,7 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
             label="项目介绍"
             maxlength={100}
             rows={3}
-            rules={r.str().content().c}
+            rules={projectValid.desc}
             autoGrow
             counter
           />
@@ -116,7 +127,7 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
   ];
 }
 function useEventDisplay(events: Project['Data']['events']): ContainerDisplay {
-  const editable = inject(injectSymbol.editable) ?? { value: false };
+  const editable = toComputed(inject(injection.editable, true));
   const event = events[0];
   const { xs } = useDisplay();
   return [
@@ -124,7 +135,7 @@ function useEventDisplay(events: Project['Data']['events']): ContainerDisplay {
       {
         cols: () => (xs.value ? 12 : 6),
         comp: () => (
-          <DatePicker
+          <VDateInput
             v-model={event[0]}
             label="开始日期"
             readonly={!editable.value}
@@ -133,7 +144,7 @@ function useEventDisplay(events: Project['Data']['events']): ContainerDisplay {
       },
       {
         comp: () => (
-          <DatePicker
+          <VDateInput
             v-model={event[1]}
             label="结束日期"
             readonly={!editable.value}
@@ -146,11 +157,11 @@ function useEventDisplay(events: Project['Data']['events']): ContainerDisplay {
 function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
   recruitments: T,
   type: RecruitmentType,
-): MaybeGetter<ContainerDisplay> {
+): ContainerDisplay {
   const data = recruitments.find((e) => e.rtype === type);
   if (!data) return [];
   const { xs } = useDisplay();
-  return () => [
+  return [
     [
       {
         cols: () => (xs.value ? 6 : 4),
@@ -159,7 +170,7 @@ function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
             v-model={data.contents[0]['total']}
             label="招募人数"
             type="number"
-            rules={r.num().min(1).max(1e2).c}
+            rules={contentValid.total}
           />
         ),
       },
@@ -170,7 +181,7 @@ function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
             v-model={data.fee}
             label="报酬"
             type="number"
-            rules={r.num().min(1).max(1e3).c}
+            rules={recruitmentValid.fee}
             prefix="￥"
           />
         ),
@@ -225,7 +236,7 @@ function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
             label: `第${i + 1}次${i ? '' : ' (实验时长)'}`,
             // placeholder: '实验时长',
             type: 'number',
-            rules: r.num().min(1).c,
+            rules: [(v) => recruitmentValid.durations[0]([v])],
             // hint: '单位: min',
             suffix: 'min',
           }}
@@ -259,10 +270,10 @@ export const ProjectInfo = defineComponent(function (
     model,
     isPass: useModel(p, 'isPasses'),
     panels: computed(() => [
-      { title: '基本', display: () => useBaseDisplay(model.value) },
+      { title: '基本', display: useBaseDisplay(model.value) },
       {
         title: '日程',
-        display: () => useEventDisplay(model.value.events),
+        display: useEventDisplay(model.value.events),
       },
       ...model.value.recruitments.map((e, i, arr) => ({
         title: i ? '' : '招募',

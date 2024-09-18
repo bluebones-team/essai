@@ -1,22 +1,11 @@
-import { useModel } from 'vue';
-import { defineComponent, type VNode } from 'vue';
+import { defineComponent, useModel } from 'vue';
 import { VItem, VItemGroup } from 'vuetify/components/VItemGroup';
 
 export const ItemGroup = defineComponent(function <T, U extends boolean>(
   p: {
     mandatory?: boolean;
     multiple?: U;
-    items: {
-      value: T;
-      comp: (slotProps: {
-        isSelected: boolean | undefined;
-        selectedClass: boolean | (string | undefined)[] | undefined;
-        select: ((value: boolean) => void) | undefined;
-        toggle: (() => void) | undefined;
-        value: T;
-        disabled: boolean | undefined;
-      }) => VNode;
-    }[];
+    items: { value: T; comp: Slots<VItem>['default'] }[];
   } & {
     modelValue?: T;
     'onUpdate:modelValue'?: (v: T) => void;
@@ -30,9 +19,7 @@ export const ItemGroup = defineComponent(function <T, U extends boolean>(
       multiple={p.multiple}
     >
       {p.items.map(({ value, comp }) => (
-        <VItem key={value + ''} value={value}>
-          {{ default: comp }}
-        </VItem>
+        <VItem key={value + ''} value={value} v-slots={{ default: comp }} />
       ))}
     </VItemGroup>
   );

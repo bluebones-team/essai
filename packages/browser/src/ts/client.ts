@@ -5,7 +5,7 @@ import {
   splitLink,
   wsLink,
 } from '@trpc/client';
-import { createClient, getApiURL, type CustomContext } from 'shared/client';
+import { createClient, getApiURL, type CustomContext } from 'shared/router';
 import { snackbar, storage } from '~/ts/state';
 
 export const client = createClient(

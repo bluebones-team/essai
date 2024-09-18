@@ -6,9 +6,6 @@ import koaJson from 'koa-json';
 import { WebSocketServer } from 'ws';
 import { catcher, cors, log } from './middleware';
 import { appRouter, routes } from './routes';
-import { connectToMongoDB } from './db';
-
-connectToMongoDB();
 
 const port = process.env.PORT || 3001;
 const server = new Koa()

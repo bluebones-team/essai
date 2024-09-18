@@ -1,5 +1,6 @@
-import { once, progress } from 'shared/client';
-import { r } from 'shared/valid';
+import { account } from 'shared/router';
+import { once, progress, type Input } from 'shared/router';
+import { useValidator } from 'shared';
 import { defineComponent, reactive, ref } from 'vue';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VTextField } from 'vuetify/components/VTextField';
@@ -7,9 +8,8 @@ import { Container, type ContainerDisplay } from '~/components/container';
 import { Form } from '~/components/form';
 import { client } from '~/ts/client';
 import { snackbar, storage } from '~/ts/state';
-import { maxNumberLength } from '~/ts/util';
 
-const data = reactive({ phone: NaN, code: NaN });
+const data = reactive({ phone: '', code: '' }) satisfies Input['login/otp'];
 const timer = {
   time: ref(0),
   countdowm(time: number) {
@@ -29,22 +29,17 @@ const onceDecorator = once();
 
 /**检查是否发送验证码 */
 function checkSend() {
-  if (data.phone) {
-    return true;
-  } else {
-    snackbar.show({ text: '请输入手机号', color: 'error' });
-    return false;
-  }
+  return data.phone || snackbar.show({ text: '请输入手机号', color: 'error' });
 }
 /**行为验证 */
 function checkHuman() {
-  console.warn('还没写行为验证');
+  console.warn('行为验证未实现');
   return true;
 }
 /**发送验证码 */
 function send() {
   if (!(checkSend() && checkHuman())) return;
-  new client('phone/code', { params: { phone: data.phone } })
+  new client('phone/code', data.phone)
     .use(progress(sendState, 'loading'))
     .use(onceDecorator)
     .send({
@@ -54,8 +49,8 @@ function send() {
     });
 }
 /**提交验证码 */
-function submit(callback: (data: { phone: number; code: number }) => void) {
-  new client('login/otp', { params: data })
+function submit(callback: (d: typeof data) => void) {
+  new client('login/otp', data)
     .use(progress(submitState, 'loading'))
     .use(onceDecorator)
     .send({
@@ -66,7 +61,7 @@ function submit(callback: (data: { phone: number; code: number }) => void) {
       },
     });
 }
-
+const validator = useValidator(account['login/otp'].req);
 const display: ContainerDisplay = [
   [
     {
@@ -74,38 +69,43 @@ const display: ContainerDisplay = [
       comp: () => (
         <VTextField
           label="手机号"
-          rules={r.num().phone().c}
-          {...maxNumberLength(data, 'phone', 11)}
+          v-model={data.phone}
+          rules={validator.phone}
+          type="number"
         />
       ),
     },
     {
       comp: () => (
-        <VTextField label="验证码" {...maxNumberLength(data, 'code', 6)}>
-          {{
+        <VTextField
+          label="验证码"
+          v-model={data.code}
+          rules={validator.code}
+          type="number"
+          v-slots={{
             'append-inner': () => (
               <VBtn
-                {...{
-                  ...sendState,
-                  ripple: false,
-                  class: 'px-0',
-                  variant: 'text',
-                  density: 'compact',
-                  text: timer.time.value
-                    ? `重新发送(${timer.time.value})`
-                    : '发送验证码',
-                  onClick: send,
-                }}
+                class="px-0"
+                variant="text"
+                density="compact"
+                ripple={false}
+                text={
+                  timer.time.value
+                    ? `${timer.time.value}s 后重新发送`
+                    : '发送验证码'
+                }
+                onClick={send}
+                {...sendState}
               />
             ),
           }}
-        </VTextField>
+        />
       ),
     },
   ],
 ];
 export const OtpInput = defineComponent(function (props: {
-  'onPass:code': (data: { phone: number; code: number }) => void;
+  'onPass:code': Parameters<typeof submit>[0];
 }) {
   return () => (
     <Form

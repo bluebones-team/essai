@@ -1,9 +1,10 @@
-import { each, pick } from 'lodash-es';
-import { Role, Theme } from 'shared/enum';
+import { each, pick } from 'shared';
+import { Role, Theme } from 'shared/data';
 import { reactive, ref, type InjectionKey } from 'vue';
 import { VSnackbar } from 'vuetify/components/VSnackbar';
 import { client } from './client';
 import { usePopup } from './hook';
+import { error } from './util';
 
 /**显示加载进度条 */
 export const showProgressbar = ref(false);
@@ -43,7 +44,7 @@ export const messages = ref<Shared.Message[]>([]);
 
 // 初始化
 setTimeout(() => {
-  new client('login', { data: { phone: 0, pwd: '' } }).send({
+  new client('login/token', null).send({
     0(res) {
       udata.value = res.data;
     },
@@ -70,7 +71,7 @@ export const storage = (function () {
     },
     set<K extends keyof D>(key: K, value: D[K]) {
       const convert = () => value + '';
-      const handleError = () => (console.error('LocalStorage data error'), '');
+      const handleError = () => (error('LocalStorage data error'), '');
       localStorage.setItem(
         key,
         //@ts-ignore
@@ -115,6 +116,6 @@ export const snackbar = usePopup(
     }) as const,
 );
 
-export const injectSymbol = {
-  editable: Symbol() as InjectionKey<{ value: boolean }>,
+export const injection = {
+  editable: Symbol('editable') as InjectionKey<MaybeGetter<boolean>>,
 };

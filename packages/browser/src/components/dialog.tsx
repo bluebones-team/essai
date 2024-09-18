@@ -27,9 +27,7 @@ export const Dialog = defineComponent(function (
         {p.content && h(p.content)}
         {p.btns?.length && (
           <VCardActions class="px-6 pb-3 pt-0">
-            {p.btns?.map((btnProps) => (
-              <VBtn class="flex-grow-1" {...btnProps} />
-            ))}
+            {p.btns?.map((nav) => <VBtn class="flex-grow-1" {...nav} />)}
           </VCardActions>
         )}
       </VCard>

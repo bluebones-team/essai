@@ -1,4 +1,4 @@
-import { FeedbackType } from 'shared/enum';
+import { FeedbackType } from 'shared/data';
 import { ref } from 'vue';
 import { VRadio } from 'vuetify/components/VRadio';
 import { VRadioGroup } from 'vuetify/components/VRadioGroup';

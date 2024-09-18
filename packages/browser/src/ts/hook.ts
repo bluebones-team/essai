@@ -1,6 +1,6 @@
-import { cloneDeep, isEqual, mapValues, pick, uniqBy } from 'lodash-es';
-import { progress } from 'shared/client';
-import { ProjectState, RecruitmentType, Theme } from 'shared/enum';
+import { progress } from 'shared/router';
+import { ProjectState, RecruitmentType, Theme } from 'shared/data';
+import { cloneDeep, isEqualDeep, mapValues, pick, uniqBy } from 'shared';
 import {
   computed,
   h,
@@ -18,6 +18,7 @@ import {
 import { toAppTheme, type ActualTheme } from '~/ts/vuetify';
 import { client } from './client';
 import { setting, showProgressbar, snackbar } from './state';
+import { error } from './util';
 
 export function useEventListener<T extends EventTarget, K extends EventType<T>>(
   target: T,
@@ -100,13 +101,13 @@ export function useTempModel<T>(model: Ref<T>) {
   const clone = () => cloneDeep(toRaw(model.value));
   const temp = ref<T>() as Ref<T>;
   watchEffect(() => (temp.value = clone()));
-  const hasChange = computed(() => !isEqual(model.value, temp.value));
+  const hasChange = computed(() => !isEqualDeep(model.value, temp.value));
   return {
     model: temp,
     hasChange,
     save() {
       if (!hasChange.value) return;
-      if (!temp.value) throw 'temp model is null';
+      if (!temp.value) return error('temp model is null');
       model.value = cloneDeep(temp.value);
     },
     cancel() {
@@ -114,11 +115,6 @@ export function useTempModel<T>(model: Ref<T>) {
       temp.value = clone();
     },
   };
-}
-export function useValid(isPasses: Ref<boolean[]>) {
-  return computed(
-    () => isPasses.value.length && isPasses.value.every((e) => e),
-  );
 }
 export function useDefaults<T extends {}, D extends InferDefaults<T>>(
   props: T,
@@ -135,14 +131,15 @@ export function useDefaults<T extends {}, D extends InferDefaults<T>>(
   }
   return new Proxy({} as ReturnType<typeof withDefaults<T, BooleanKey<T>, D>>, {
     //@ts-ignore
-    get(obj, key: keyof typeof props) {
-      if (props.hasOwnProperty(key)) {
-        const propValue = props[key];
-        return propValue === void 0 ? getDefaultValue(key) : propValue;
+    get(o, p: keyof T) {
+      if (props.hasOwnProperty(p)) {
+        const propValue = props[p];
+        return propValue === void 0 ? getDefaultValue(p) : propValue;
       }
-      return getDefaultValue(key);
+      return getDefaultValue(p);
     },
-    set(obj, key, value) {
+    set() {
+      error('cannot set props value');
       return false;
     },
   });
@@ -157,22 +154,23 @@ export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
     page: { ps: 20, pn: 1 },
   });
   watchEffect(() => {
-    state.preview &&
-      new client(`proj/${type}/sup`, { pid: state.preview.pid })
-        .use(progress(showProgressbar, 'value'))
-        .send({
-          //@ts-ignore
-          0(res) {
-            const data: NonNullable<typeof state.data> = Object.assign(
-              res.data,
-              state.preview,
-            );
-            data.recruitments = uniqBy(data.recruitments, 'rtype').toSorted(
-              (a, b) => a.rtype - b.rtype,
-            );
-            state.data = data;
-          },
-        });
+    if (!state.preview) return;
+    new client(`proj/${type}/sup`, { pid: state.preview.pid })
+      .use(progress(showProgressbar, 'value'))
+      .send({
+        //@ts-ignore
+        0(res) {
+          const data: NonNullable<typeof state.data> = Object.assign(
+            res.data,
+            state.preview,
+          );
+          data.recruitments = uniqBy(
+            data.recruitments,
+            (e) => e.rtype,
+          ).toSorted((a, b) => a.rtype - b.rtype);
+          state.data = data;
+        },
+      });
   });
   function fetchList(
     filterData: Filter.Data = { rtype: RecruitmentType.Subject._value },
@@ -195,11 +193,12 @@ export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
   };
 }
 export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
-  const toDefaultRange = (): Filter.Range => ({
-    duration_range: [0, 100],
-    times_range: [0, 100],
-    fee_range: [0, 100],
-  });
+  const toDefaultRange = () =>
+    ({
+      duration_range: [0, 100],
+      times_range: [0, 100],
+      fee_range: [0, 100],
+    }) as Filter.Range;
   const state = reactive({
     range: toDefaultRange(),
     data: {
@@ -220,10 +219,8 @@ export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
       .use(progress(showProgressbar, 'value'))
       .send({
         0(res) {
-          state.range = mapValues(
-            res.data,
-            (v) => v.toSorted((a, b) => a - b) as [number, number],
-          );
+          //@ts-ignore
+          state.range = mapValues(res.data, (v) => v.toSorted((a, b) => a - b));
           Object.assign(state.data, state.range);
         },
       });

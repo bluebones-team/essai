@@ -7,8 +7,8 @@ export const jwtTokenSecret = process.env.JWT_SECRET_KEY ?? 'key';
  * @param phone 手机号
  * @returns 用户ID
  */
-export const generateUserId = (phone: number) => {
-  return phone * 1000 + Number(Date.now().toString().slice(-3));
+export const generateUserId = (phone: string) => {
+  return +phone * 1000 + +Date.now().toString().slice(-3);
 };
 /** 生成6位验证码 */
 export const generateCode = () => {
@@ -19,7 +19,7 @@ export const generateCode = () => {
  * @param phone 手机号
  * @param id 用户ID
  */
-export const generateToken = (phone: number, id: number): Shared.Token => {
+export const generateToken = (phone: string, id: number): Shared.Token => {
   const payload = { phone, id };
   return {
     access: jwt.sign(payload, jwtTokenSecret, { expiresIn: '15m' }),

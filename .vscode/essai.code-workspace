@@ -16,7 +16,5 @@
       "path": "../packages/wxapp",
     },
   ],
-  "settings": {
-    ,
-  },
+  "settings": {},
 }

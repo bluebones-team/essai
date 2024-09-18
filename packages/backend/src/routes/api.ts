@@ -4,13 +4,14 @@ import {
   type ProcedureBuilder,
 } from '@trpc/server';
 import { observable } from '@trpc/server/observable';
-import { mapValues } from 'lodash-es';
-import apiConfig, {
+import { mapValues } from 'shared';
+import {
+  apiConfig,
   type ApiConfig,
   type ApiRecord,
   type ApiType,
-} from 'shared/api';
-import type { shared } from 'shared/schema';
+} from 'shared/router';
+import type { shared } from 'shared/data';
 import { zocker } from 'zocker';
 import { z } from 'zod';
 import { output, type Context, type Middleware } from '.';
@@ -33,7 +34,7 @@ type ApiProcedureParams<Req extends z.ZodType, Res extends z.ZodType> =
     ? Merge<
         T,
         {
-          _input_in: inferParser<Req>['in'];
+          _input_in: inferParser<Req>['out']; // compatible with z.zodBrand
           _input_out: inferParser<Req>['out'];
           _output_in: inferParser<ReturnType<typeof shared.output<Res>>>['in'];
           _output_out: inferParser<
@@ -50,7 +51,6 @@ type ApiProcedureBuilder<Api> =
 const apiTypeMap = {
   get: 'query',
   post: 'mutation',
-  sse: 'subscription', // trpc 11.x 开始支持
   ws: 'subscription',
 } as const;
 /**API Record -> Procedure */
@@ -69,6 +69,7 @@ export function toRouter(pathImplementMap: {
     toProc(
       api,
       // pathImplementMap[k]
+      // 不调用接口实现，直接返回 mock 数据, 方便调试
       api.type === 'ws'
         ? () =>
             observable((emit) => {
@@ -78,7 +79,7 @@ export function toRouter(pathImplementMap: {
               setTimeout(() => clearInterval(timer), 10e3);
               return () => clearInterval(timer);
             })
-        : () => output.succ(zocker(api.res).generate()), // 不调用接口实现，直接返回 mock 数据,
+        : () => output.succ(zocker(api.res).generate()),
     ),
   ) as {
     [K in keyof ApiConfig]: ReturnType<ApiProcedureBuilder<ApiConfig[K]>>;

@@ -1,4 +1,5 @@
 import type { FunctionalComponent } from 'vue';
+import type { RouteRecord, RouteRecordRaw, RouteMeta } from 'vue-router';
 
 interface Constructor<P, S> {
   __isFragment?: never;
@@ -31,4 +32,9 @@ declare global {
     [P in `onUpdate:${N}`]?: (value: T) => void;
   };
   type InferDefaults<T> = { [K in keyof T]?: InferDefault<T, T[K]> };
+
+  type SupplyRoute = Partial<RouteRecord>;
+  type NavRoute = RouteRecordRaw & {
+    meta: RequiredKeys<RouteMeta, 'nav'>;
+  };
 }

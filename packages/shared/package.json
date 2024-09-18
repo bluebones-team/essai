@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "type-check": "tsc --noEmit --noUnusedLocals false"
+    "type-check": "tsc --noEmit --noUnusedLocals false",
+    "test": "vitest"
   },
   "dependencies": {}
 }

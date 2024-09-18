@@ -1,5 +1,3 @@
-/**基本类型 */
-type BaseType = string | number | boolean;
 /**深层Partial */
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends {} ? DeepPartial<T[K]> : T[K];
@@ -50,15 +48,18 @@ type MergeTuple<T extends any[], S = {}> = T extends []
 //#endregion object
 
 //#region function
-type isEuqal<T, U> =
+type Eq<T, U> =
   (<G>() => G extends T ? 1 : 2) extends <G>() => G extends U ? 1 : 2
     ? true
     : false;
+type Not<T> = T extends true ? false : true;
+type If<T, U, V = T> = Eq<T, true> extends true ? U : V;
+type Branded<T, U> = T & { readonly __brand: U };
 //#endregion function
 
 //#region number
 type IntToTuple<N extends number, T extends number[] = []> =
-  isEuqal<T['length'], N> extends true ? T : IntToTuple<N, [...T, T['length']]>;
+  Eq<T['length'], N> extends true ? T : IntToTuple<N, [...T, T['length']]>;
 //#endregion number
 
 //#region tuple

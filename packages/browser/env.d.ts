@@ -3,23 +3,19 @@
 /// <reference types="shared/types" />
 
 import type { HTMLAttributes } from '@vue/runtime-dom';
-import type { Role } from 'shared/enum';
+import type { Role } from 'shared/data';
 import 'vue-router';
 import 'vue/jsx-runtime';
 
 declare module 'vue-router' {
   interface RouteMeta {
-    /**按钮样式 */
-    btnProps?: {
+    nav?: {
       tip: string;
       icon: string;
-      /**顺序 */
       order?: number;
-      /**组顺序 */
       groupOrder?: number;
       hideOn?: 'pc' | 'mobile';
     };
-    /**用户权限 */
     need?: Partial<{
       login: boolean;
       role: Role;

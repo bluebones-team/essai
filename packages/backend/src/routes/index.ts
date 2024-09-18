@@ -1,7 +1,5 @@
-import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import type { CreateHTTPContextOptions } from '@trpc/server/adapters/standalone';
-import type { Input, Output } from 'shared/client';
-import { BizCode } from 'shared/enum';
+import { BizCode } from 'shared/data';
 import { createKoaMiddleware } from 'trpc-koa-adapter';
 import { t, toRouter } from './api';
 // import apiRouter from './implement';
@@ -30,9 +28,4 @@ export const output = {
 
 export type Middleware = Parameters<typeof t.procedure.use>[0];
 export type Context = ReturnType<typeof createContext>;
-
-// Router type unit test
-type ApiRouter = typeof apiRouter;
-type _Input = isEuqal<Input, inferRouterInputs<ApiRouter>>;
-type _Output = isEuqal<Output, inferRouterOutputs<ApiRouter>>;
-type IsRouterCorrect<_ extends _Input & _Output = true> = _;
+export type ApiRouter = typeof apiRouter;

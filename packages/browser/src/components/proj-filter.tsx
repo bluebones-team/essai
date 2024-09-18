@@ -1,5 +1,5 @@
 import { mdiMagnify, mdiTune } from '@mdi/js';
-import { ProjectType, RecruitmentType } from 'shared/enum';
+import { ProjectType, RecruitmentType } from 'shared/data';
 import { defineComponent, useModel } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VIcon } from 'vuetify/components/VIcon';

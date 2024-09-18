@@ -11,7 +11,8 @@ import { VBtn } from 'vuetify/components/VBtn';
 import { VCardActions } from 'vuetify/components/VCard';
 import { VForm } from 'vuetify/components/VForm';
 import { VSpacer } from 'vuetify/components/VGrid';
-import { injectSymbol } from '~/ts/state';
+import { injection } from '~/ts/state';
+import { toComputed } from '~/ts/util';
 
 function useSizeStyle(mobile: ComputedRef<boolean>) {
   return computed(() => ({
@@ -33,7 +34,7 @@ export const Form = defineComponent(function (
   { slots }: Omit<SetupContext, 'expose'>,
 ) {
   const model = useModel(p, 'modelValue');
-  const editable = inject(injectSymbol.editable) ?? { value: false };
+  const editable = toComputed(inject(injection.editable, true));
   const { mobile } = useDisplay();
   const sizeStyle = useSizeStyle(mobile);
   return () => (

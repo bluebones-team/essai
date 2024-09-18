@@ -1,5 +1,5 @@
 import jwt, { type VerifyErrors } from 'jsonwebtoken';
-import { BizCode } from 'shared/enum';
+import { BizCode } from 'shared/data';
 import { jwtTokenSecret } from '~/service';
 import { output, type Middleware } from '.';
 

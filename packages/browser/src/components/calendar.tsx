@@ -2,7 +2,7 @@
 import 'vue-cal/dist/vuecal.css';
 import '~/style/vuecal.css';
 
-import { EventType, RecruitmentType } from 'shared/enum';
+import { EventType, RecruitmentType } from 'shared/data';
 import { computed, defineComponent, ref, watchEffect } from 'vue';
 import VueCal, { type vuecal } from 'vue-cal';
 import { VBtn } from 'vuetify/components/VBtn';
@@ -10,6 +10,7 @@ import { VToolbar } from 'vuetify/components/VToolbar';
 import { Date2Timestamp, Timestamp2Date, dateFormat } from '~/ts/date';
 import { useDefaults } from '~/ts/hook';
 import { setting } from '~/ts/state';
+import { error } from '~/ts/util';
 
 function Schedule2Event(
   schedule: Project['Schedule'],
@@ -173,7 +174,7 @@ export const Calendar = defineComponent(function (
               props.joined[meta.index].end = Date2Timestamp(event.end);
             },
             [EventType.Public._value]() {
-              console.error('公共项目日程不可拖动');
+              error('公共项目日程不可拖动');
             },
             [EventType.Own._value]() {
               props.own[meta.index].start = Date2Timestamp(event.start);

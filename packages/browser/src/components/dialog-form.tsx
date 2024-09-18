@@ -1,14 +1,12 @@
 import {
   defineComponent,
   h,
-  provide,
   useModel,
   type Component,
   type StyleValue,
 } from 'vue';
 import type { VCard } from 'vuetify/components/VCard';
 import { useDefaults } from '~/ts/hook';
-import { injectSymbol } from '~/ts/state';
 import { Dialog } from './dialog';
 import { Form } from './form';
 
@@ -25,7 +23,6 @@ export const DialogForm = defineComponent(function (
     'onUpdate:modelValue'?(value: boolean): void;
   },
 ) {
-  provide(injectSymbol.editable, { value: true });
   const model = useModel(_p, 'modelValue');
   const p = useDefaults(_p, {
     submitText: '提交',

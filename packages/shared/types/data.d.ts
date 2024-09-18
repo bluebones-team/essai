@@ -1,5 +1,12 @@
 import type { z } from 'zod';
-import { filter, participant, project, report, shared, user } from '../schema';
+import {
+  filter,
+  participant,
+  project,
+  report,
+  shared,
+  user,
+} from '../data/schema';
 
 declare global {
   namespace Shared {

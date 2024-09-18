@@ -1,9 +1,11 @@
-import { each } from 'lodash-es';
+import { each } from 'shared';
 
-export const Duration2Timestamp = (duration: Shared.Duration) => duration * 60;
+export const Duration2Timestamp = (duration: Shared.Duration) =>
+  (duration * 60) as Shared.Timestamp;
 export const Timestamp2Date = (timestamp: Shared.Timestamp) =>
   new Date(timestamp * 1e3);
-export const Date2Timestamp = (date: Date) => Math.floor(date.getTime() * 1e-3);
+export const Date2Timestamp = (date: Date) =>
+  Math.floor(date.getTime() * 1e-3) as Shared.Timestamp;
 /**获取年龄 */
 export function Birthday2Age(birthday: Shared.Timestamp) {
   const now = new Date();
@@ -31,10 +33,6 @@ export function dateFormat(
   date: Date | Shared.Timestamp,
   format = 'YYYY/MM/DD',
 ) {
-  if (date === void 0) {
-    console.error('dateFormat缺少参数date');
-    date = new Date();
-  }
   if (typeof date === 'number') {
     date = Timestamp2Date(date);
   }

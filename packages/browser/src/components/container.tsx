@@ -7,22 +7,17 @@ export type ContainerDisplay = {
   comp: Component;
 }[][];
 
-export const Container = defineComponent(function (props: {
-  display: MaybeGetter<ContainerDisplay>;
-}) {
-  return () => (
+export const Container = defineComponent(
+  (p: { display: ContainerDisplay }) => () => (
     <VContainer class="pb-0">
-      {toComputed(props.display).value.map((configs) => (
+      {p.display.map((configs) => (
         <VRow>
           {configs.map(({ cols, comp }) => (
             //@ts-ignore
-            <VCol
-              cols={toComputed(cols).value}
-              v-slots={{ default: comp }}
-            ></VCol>
+            <VCol cols={toComputed(cols).value} v-slots={{ default: comp }} />
           ))}
         </VRow>
       ))}
     </VContainer>
-  );
-});
+  ),
+);

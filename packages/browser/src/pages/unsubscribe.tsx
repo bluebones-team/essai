@@ -12,6 +12,7 @@ function unsubscribe() {
     },
   });
 }
+export const route: SupplyRoute = {};
 export default defineComponent(
   () => () => (
     <VMain>

@@ -20,13 +20,14 @@
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.4",
+    "@types/estree": "^1.0.5",
     "@types/node": "^18.19.45",
     "@vitejs/plugin-vue-jsx": "^4.0.1",
     "@vue/tsconfig": "^0.4.0",
     "npm-run-all2": "^6.2.2",
     "rollup-plugin-visualizer": "^5.12.0",
     "unplugin-inject-preload": "^2.0.5",
-    "vite": "^4.5.3",
+    "vite": "^5.4.6",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-multiple-entries": "^0.0.1",
     "vite-plugin-pwa": "^0.20.1"
