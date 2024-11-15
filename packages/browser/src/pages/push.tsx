@@ -22,8 +22,8 @@ import { VMain } from 'vuetify/components/VMain';
 import { VToolbar } from 'vuetify/components/VToolbar';
 import { Dialog } from '~/components/dialog';
 import { Table } from '~/components/table';
-import { client } from '~/ts/client';
-import { Birthday2Age } from '~/ts/date';
+import { c } from '~/ts/client';
+import { birth_age } from 'shared/data';
 import { useLib, usePopup, useProj } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
 
@@ -41,7 +41,7 @@ const _Table = () => (
         key: 'type',
         value: (item) => (
           <VChip color={ProjectType[item.type].color}>
-            {ProjectType[item.type]._name}
+            {ProjectType[item.type].name}
           </VChip>
         ),
       },
@@ -76,7 +76,7 @@ const _LibTable = defineComponent(() => {
         {
           title: '年龄',
           key: 'birthday',
-          value: (item) => Birthday2Age(item.birthday),
+          value: (item) => birth_age(item.birthday),
         },
         {
           title: '操作',
@@ -90,14 +90,14 @@ const _LibTable = defineComponent(() => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                new client('lib/remove', {
-                  rtype: lib.rtype,
-                  uid: item.uid,
-                }).send({
-                  0(res) {
-                    lib.list.splice(lib.list.indexOf(item), 1);
+                c['lib/remove'].send(
+                  { rtype: lib.rtype, uid: item.uid },
+                  {
+                    0(res) {
+                      lib.list.splice(lib.list.indexOf(item), 1);
+                    },
                   },
-                });
+                );
               }}
             ></VBtn>
           ),
@@ -119,7 +119,7 @@ const _LibTable = defineComponent(() => {
           >
             {proj.data?.recruitments.map(({ rtype }) => {
               const e = RecruitmentType[rtype];
-              return <VBtn value={e._value}>{e.title}</VBtn>;
+              return <VBtn value={e.value}>{e.title}</VBtn>;
             })}
           </VBtnToggle>,
         ],
@@ -139,18 +139,21 @@ const _LibFab = () => (
       if (!proj.preview) return snackbar.show({ text: '请选择要推送的项目' });
       if (!lib.selected.length)
         return snackbar.show({ text: '请选择要推送的参与者' });
-      new client('lib/push', {
-        pid: proj.preview.pid,
-        rtype: lib.rtype,
-        uids: lib.selected.map((e) => e.uid),
-      }).send({
-        0(res) {
-          snackbar.show({
-            text: `${proj.preview?.title} 推送成功`,
-            color: 'success',
-          });
+      c['lib/push'].send(
+        {
+          pid: proj.preview.pid,
+          rtype: lib.rtype,
+          uids: lib.selected.map((e) => e.uid),
         },
-      });
+        {
+          0(res) {
+            snackbar.show({
+              text: `${proj.preview?.title} 推送成功`,
+              color: 'success',
+            });
+          },
+        },
+      );
     }}
   />
 );
@@ -166,7 +169,7 @@ watchEffect(() => {
   if (proj.data) lib_dialog.show();
 });
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '推送',
@@ -175,7 +178,7 @@ export const route: SupplyRoute = {
     },
     need: {
       login: true,
-      role: Role.Recruiter._value,
+      role: Role.Recruiter.value,
     },
   },
 };
@@ -183,7 +186,7 @@ export default defineComponent({
   name: 'Push',
   beforeRouteEnter(to, from, next) {
     Promise.allSettled([
-      fetchProjList({ state: ProjectState.Passed._value }),
+      fetchProjList({ state: ProjectState.Passed.value }),
       fetchLibList(),
     ]).finally(next);
   },

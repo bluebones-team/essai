@@ -7,7 +7,7 @@ import {
 import { usr } from 'shared/router';
 import { progress, type Input } from 'shared/router';
 import { Gender } from 'shared/data';
-import { useValidator } from 'shared';
+import { toFieldRules } from 'shared';
 import { pick } from 'shared';
 import {
   computed,
@@ -23,19 +23,19 @@ import { Container, type ContainerDisplay } from '~/components/container';
 import { DialogForm } from '~/components/dialog-form';
 import { Pic } from '~/components/pic';
 import { SectionGroup } from '~/components/section-group';
-import { client } from '~/ts/client';
+import { c } from '~/ts/client';
 import { dateFormat } from '~/ts/date';
 import { usePopup } from '~/ts/hook';
 import { storage, udata } from '~/ts/state';
 import { error } from '~/ts/util';
 
-const rules = useValidator(usr['usr/edit'].req);
+const rules = toFieldRules(usr['usr/edit'].in);
 /**编辑框 */
 function editInput(data: Input['usr/edit']) {
   const { promise, resolve } = Promise.withResolvers<string[]>();
-  new client('usr/face/list', null).send({
-    0: (res) => resolve(res.data),
-  });
+  // c['usr/face/list'].send(void 0,{
+  //   0: (res) => resolve(res.data),
+  // });
   const display: ContainerDisplay = [
     [
       {
@@ -71,7 +71,7 @@ function editBtn() {
     content: editInput(data),
     submitText: '更新',
     onPass() {
-      new client('usr/edit', data).use(progress(loading, 'value')).send();
+      c['usr/edit'].use(progress(loading, 'value')).send(data);
     },
   }));
   return () => (
@@ -98,7 +98,7 @@ function deleteUserBtn() {
         color: 'error',
         loading: loading.value,
         onClick() {
-          new client('signout', null).use(progress(loading, 'value')).send({
+          c['logout'].use(progress(loading, 'value')).send(void 0, {
             0() {
               udata.value = void 0;
               storage.removeToken();
@@ -121,7 +121,7 @@ function logoutBtn() {
         color: 'error',
         loading: loading.value,
         onClick() {
-          new client('logout', null).use(progress(loading, 'value')).send({
+          c['logout'].use(progress(loading, 'value')).send(void 0, {
             0() {
               udata.value = void 0;
               storage.removeToken();
@@ -134,7 +134,7 @@ function logoutBtn() {
   );
 }
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '个人资料',

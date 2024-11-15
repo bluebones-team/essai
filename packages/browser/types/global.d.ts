@@ -7,7 +7,7 @@ interface Constructor<P, S> {
   __isSuspense?: never;
   new (...args: any[]): { $props: P; $slots: S };
 }
-type ComponentLike<P, S> =
+type ComponentLike<P, S extends Record<string, any>> =
   | FunctionalComponent<P, any, S>
   | { $props: P; $slots: S }
   | Constructor<P, S>;
@@ -33,8 +33,6 @@ declare global {
   };
   type InferDefaults<T> = { [K in keyof T]?: InferDefault<T, T[K]> };
 
-  type SupplyRoute = Partial<RouteRecord>;
-  type NavRoute = RouteRecordRaw & {
-    meta: RequiredKeys<RouteMeta, 'nav'>;
-  };
+  type LooseRouteRecord = Partial<RouteRecord>;
+  type NavRoute = RouteRecordRaw & { meta: RequiredByKey<RouteMeta, 'nav'> };
 }

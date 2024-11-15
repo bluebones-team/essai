@@ -31,7 +31,7 @@ function _Table() {
           key: 'type',
           value: (item) => (
             <VChip color={ProjectType[item.type].color}>
-              {ProjectType[item.type]._name}
+              {ProjectType[item.type].name}
             </VChip>
           ),
         },
@@ -47,8 +47,8 @@ function _Table() {
             divided
             mandatory
           >
-            {RecruitmentType._items.map((e) => (
-              <VBtn value={e._value}>{e.title}</VBtn>
+            {RecruitmentType.items.map((e) => (
+              <VBtn value={e.value}>{e.title}</VBtn>
             ))}
           </VBtnToggle>
         ),
@@ -67,7 +67,7 @@ watchEffect(() => {
   if (proj.data) detail_dialog.show();
 });
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '正在参加',
@@ -76,7 +76,7 @@ export const route: SupplyRoute = {
     },
     need: {
       login: true,
-      role: Role.Participant._value,
+      role: Role.Participant.value,
     },
   },
 };

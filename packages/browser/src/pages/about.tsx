@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 
-export const route: SupplyRoute = {};
+export const route: LooseRouteRecord = {};
 export default defineComponent({
   name: 'About',
   setup() {

@@ -1,28 +1,47 @@
-import jwt from 'jsonwebtoken';
+import { sign, verify } from 'jsonwebtoken';
+import { env, pick } from 'shared';
+import { date_ts } from 'shared/data';
 
-export const SMS_CODE_EX = 60 * 5;
-export const jwtTokenSecret = process.env.JWT_SECRET_KEY ?? 'key';
-/** 生成用户ID
- * 生成规则：手机号*1000+当前时间戳的后三位
- * @param phone 手机号
- * @returns 用户ID
- */
-export const generateUserId = (phone: string) => {
-  return +phone * 1000 + +Date.now().toString().slice(-3);
+export const dataCreater = {
+  pid() {
+    return 1;
+  },
+  otp(num = 6) {
+    const code = '' + Math.floor(Math.random() * 10 ** num);
+    return code.padStart(num, '0');
+  },
+  mid() {
+    return 1;
+  },
+  msg(
+    opts: Pick<Shared.Message, 'uid' | 'type' | 'title' | 'content'>,
+  ): Shared.Message {
+    const mid = dataCreater.mid();
+    return {
+      ...opts,
+      mid,
+      t: date_ts(Date.now()),
+      read: false,
+    };
+  },
 };
-/** 生成6位验证码 */
-export const generateCode = () => {
-  return Math.floor(Math.random() * 1e6);
-};
-/**
- * 生成token
- * @param phone 手机号
- * @param id 用户ID
- */
-export const generateToken = (phone: string, id: number): Shared.Token => {
-  const payload = { phone, id };
-  return {
-    access: jwt.sign(payload, jwtTokenSecret, { expiresIn: '15m' }),
-    refresh: jwt.sign(payload, jwtTokenSecret, { expiresIn: '7d' }),
-  };
+
+export type TokenPayload = Pick<User.Own, 'phone' | 'uid'>;
+export const tokenMgr = {
+  secret: env('JWT_SECRET_KEY'),
+  create(data: TokenPayload): Shared.Token {
+    const payload: TokenPayload = pick(data, ['phone', 'uid']);
+    return {
+      access: sign(payload, tokenMgr.secret, { expiresIn: '15m' }),
+      refresh: sign(payload, tokenMgr.secret, { expiresIn: '7d' }),
+    };
+  },
+  verify(token: string) {
+    const { promise, resolve, reject } = Promise.withResolvers<TokenPayload>();
+    verify(token, tokenMgr.secret, (err, decoded) => {
+      // @ts-ignore
+      err ? reject(err) : resolve(decoded);
+    });
+    return promise;
+  },
 };

@@ -1,14 +1,23 @@
-import { progress } from 'shared/router';
+import {
+  cloneDeep,
+  isEqualDeep,
+  isObject,
+  mapValues,
+  pick,
+  uniqBy,
+} from 'shared';
 import { ProjectState, RecruitmentType, Theme } from 'shared/data';
-import { cloneDeep, isEqualDeep, mapValues, pick, uniqBy } from 'shared';
+import { progress } from 'shared/router';
 import {
   computed,
   h,
   onMounted,
   onUnmounted,
   reactive,
+  readonly,
   ref,
   shallowReactive,
+  shallowRef,
   toRaw,
   toRef,
   watchEffect,
@@ -16,10 +25,11 @@ import {
   type Ref,
 } from 'vue';
 import { toAppTheme, type ActualTheme } from '~/ts/vuetify';
-import { client } from './client';
+import { c } from './client';
 import { setting, showProgressbar, snackbar } from './state';
 import { error } from './util';
 
+/**@see https://vueuse.org/guide/ */
 export function useEventListener<T extends EventTarget, K extends EventType<T>>(
   target: T,
   type: K,
@@ -37,10 +47,10 @@ export function useMatchMedia(query: string) {
 export function useTheme() {
   const matches = useMatchMedia('(prefers-color-scheme: dark)');
   const actual = computed<ActualTheme>(() =>
-    setting.display.theme === Theme.System._value
+    setting.display.theme === Theme.System.value
       ? matches.value
-        ? Theme.Dark._value
-        : Theme.Light._value
+        ? Theme.Dark.value
+        : Theme.Light.value
       : setting.display.theme,
   );
   return reactive({
@@ -49,12 +59,10 @@ export function useTheme() {
   });
 }
 export function useComponent<T extends Component>(comp: T) {
-  const props = ref<Props<T>>();
+  const props = shallowRef<Props<T>>();
   return {
     Comp: (p: Props<T>) => h(comp, Object.assign({}, props.value, p)),
-    change(newProps: Props<T>) {
-      props.value = newProps;
-    },
+    change: (p: Props<T>) => (props.value = p),
   };
 }
 export function usePopup<T extends Component<ModelProps<boolean>>>(
@@ -66,7 +74,7 @@ export function usePopup<T extends Component<ModelProps<boolean>>>(
   return {
     Comp: () =>
       //@ts-ignore
-      h(Comp, {
+      Comp({
         modelValue: isShow.value,
         'onUpdate:modelValue'(v: boolean) {
           isShow.value = v;
@@ -82,18 +90,18 @@ export function usePopup<T extends Component<ModelProps<boolean>>>(
     },
   };
 }
-export function useCRUD<T, P extends unknown[]>(
-  _items: T[],
-  newItem: (...e: P) => T,
-) {
-  const items = shallowReactive(_items);
+export function useList<T>(items: T[]) {
+  const _items = shallowReactive(items);
   return {
-    items,
-    add(...e: P) {
-      items.push(newItem(...e));
+    items: _items,
+    add(e: T) {
+      _items.push(e);
     },
-    remove(item: T) {
-      items.splice(items.indexOf(item), 1);
+    remove(e: T) {
+      _items.splice(_items.indexOf(e), 1);
+    },
+    clear() {
+      _items.splice(0, _items.length);
     },
   };
 }
@@ -116,31 +124,18 @@ export function useTempModel<T>(model: Ref<T>) {
     },
   };
 }
-export function useDefaults<T extends {}, D extends InferDefaults<T>>(
+export function useDefaults<T extends LooseObject, D extends Partial<T>>(
   props: T,
-  options: D,
+  defaults: D,
 ) {
-  function getDefaultValue(key: keyof T) {
-    if (options.hasOwnProperty(key)) {
-      const defaultValue = options[key];
-      return typeof defaultValue === 'function'
-        ? defaultValue(props)
-        : defaultValue;
-    }
-    return void 0;
-  }
-  return new Proxy({} as ReturnType<typeof withDefaults<T, BooleanKey<T>, D>>, {
-    //@ts-ignore
-    get(o, p: keyof T) {
-      if (props.hasOwnProperty(p)) {
-        const propValue = props[p];
-        return propValue === void 0 ? getDefaultValue(p) : propValue;
-      }
-      return getDefaultValue(p);
-    },
-    set() {
-      error('cannot set props value');
-      return false;
+  const toVal = (k: keyof T) => {
+    const v = defaults[k];
+    return isObject(v) ? readonly(v) : v;
+  };
+  return new Proxy(props as RequiredByKey<T, string & keyof D>, {
+    get(o, k: string & keyof T) {
+      if (props.hasOwnProperty(k)) return props[k] ?? toVal(k);
+      error(`prop ${k} is not declared`);
     },
   });
 }
@@ -155,9 +150,9 @@ export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
   });
   watchEffect(() => {
     if (!state.preview) return;
-    new client(`proj/${type}/sup`, { pid: state.preview.pid })
-      .use(progress(showProgressbar, 'value'))
-      .send({
+    c[`proj/${type}/sup`].use(progress(showProgressbar, 'value')).send(
+      { pid: state.preview.pid },
+      {
         //@ts-ignore
         0(res) {
           const data: NonNullable<typeof state.data> = Object.assign(
@@ -170,22 +165,21 @@ export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
           ).toSorted((a, b) => a.rtype - b.rtype);
           state.data = data;
         },
-      });
+      },
+    );
   });
   function fetchList(
-    filterData: Filter.Data = { rtype: RecruitmentType.Subject._value },
+    filterData: Filter.Data = { rtype: RecruitmentType.Subject.value },
   ) {
-    return new client(`proj/${type}/list`, {
-      ...state.page,
-      filter: filterData,
-    })
-      .use(progress(showProgressbar, 'value'))
-      .send({
+    return c[`proj/${type}/list`].use(progress(showProgressbar, 'value')).send(
+      { ...state.page, filter: filterData },
+      {
         //@ts-ignore
         0(res) {
           state.list = res.data;
         },
-      });
+      },
+    );
   }
   return {
     state,
@@ -202,10 +196,10 @@ export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
   const state = reactive({
     range: toDefaultRange(),
     data: {
-      rtype: RecruitmentType.Subject._value,
-      state: ProjectState.Passed._value,
+      rtype: RecruitmentType.Subject.value,
+      state: ProjectState.Passed.value,
       ...toDefaultRange(),
-    } as RequiredKeys<Filter.Data, 'state'>,
+    } as RequiredByKey<Filter.Data, 'state'>,
   });
   function fetchRange() {
     if (type !== 'public') {
@@ -215,9 +209,9 @@ export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
       });
       return;
     }
-    return new client(`proj/${'public'}/range`, null)
+    return c[`proj/${'public'}/range`]
       .use(progress(showProgressbar, 'value'))
-      .send({
+      .send(void 0, {
         0(res) {
           //@ts-ignore
           state.range = mapValues(res.data, (v) => v.toSorted((a, b) => a - b));
@@ -233,7 +227,7 @@ export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
 export function usePtc(proj: Ref<Project['Preview'] | null>) {
   const state = reactive({
     list: [] as Participant.Join[],
-    rtype: RecruitmentType.Subject._value as RecruitmentType,
+    rtype: RecruitmentType.Subject.value as RecruitmentType,
     selected: null as Participant.Join | null,
     page: { ps: 20, pn: 1 },
   });
@@ -243,17 +237,18 @@ export function usePtc(proj: Ref<Project['Preview'] | null>) {
   function fetchList() {
     if (!proj.value)
       return snackbar.show({ text: '请选择项目', color: 'error' });
-    return new client('ptc/list', {
-      ...state.page,
-      filter: { rtype: state.rtype },
-      pid: proj.value.pid,
-    })
-      .use(progress(showProgressbar, 'value'))
-      .send({
+    return c['ptc/list'].use(progress(showProgressbar, 'value')).send(
+      {
+        ...state.page,
+        filter: { rtype: state.rtype },
+        pid: proj.value.pid,
+      },
+      {
         0(res) {
           state.list = res.data;
         },
-      });
+      },
+    );
   }
   return {
     state,
@@ -280,20 +275,18 @@ export function useLib() {
   const state = reactive({
     list: [] as Participant.Lib[],
     selected: [] as Participant.Lib[],
-    rtype: RecruitmentType.Subject._value as RecruitmentType,
+    rtype: RecruitmentType.Subject.value as RecruitmentType,
     page: { ps: 20, pn: 1 },
   });
   function fetchList() {
-    return new client('lib/list', {
-      ...state.page,
-      filter: { rtype: state.rtype },
-    })
-      .use(progress(showProgressbar, 'value'))
-      .send({
+    return c['lib/list'].use(progress(showProgressbar, 'value')).send(
+      { ...state.page, filter: { rtype: state.rtype } },
+      {
         0(res) {
           state.list = res.data;
         },
-      });
+      },
+    );
   }
   return {
     state,

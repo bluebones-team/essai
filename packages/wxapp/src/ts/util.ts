@@ -1,59 +1,34 @@
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import { each } from 'shared';
 import { createClient, getApiURL } from 'shared/router';
 
 const accountInfo = wx.getAccountInfoSync();
 const envVersion = accountInfo.miniProgram.envVersion;
-export const client = createClient(
-  createTRPCProxyClient({
-    links: [
-      //@ts-ignore
-      httpBatchLink({
-        url: getApiURL(envVersion === 'develop'),
-        ...(() => {
-          let task: WechatMiniprogram.RequestTask;
-          return {
-            fetch: (input, init) =>
-              new Promise((resolve, reject) => {
-                task = wx.request({
-                  //@ts-ignore
-                  url: input.url ? input.url : input + '',
-                  //@ts-ignore
-                  method: init?.method?.toUpperCase() || 'GET',
-                  //@ts-ignore
-                  data: init?.body,
-                  header: init?.headers,
-                  success: (res) =>
-                    resolve({
-                      async json() {
-                        return res.data;
-                      },
-                    }),
-                  fail: reject,
-                });
-              }),
-            AbortController() {
-              return { abort: () => task.abort() };
-            },
-          };
-        })(),
-      }),
-    ],
-  }),
-  {
-    showTip(e) {
-      wx.showToast({
-        title: e.text,
-        icon: e.color === 'success' ? 'success' : 'none',
-      });
-    },
-    token: {
-      get(k) {
-        return wx.getStorageSync(k);
+
+const host = getApiURL(envVersion === 'develop');
+const wsHost = getApiURL(envVersion === 'develop', 'ws');
+export const c = createClient({
+  send(d) {
+    const type = d.meta.type;
+    if (type === 'ws') return;
+    fetch(`${host}/${d.path}`, {
+      method: type,
+      headers: {
+        Authorization: d.token,
+        // 'Content-Type': 'application/json',
       },
-      set(d) {
-        each(d, (v, k) => wx.setStorageSync(k, v));
-      },
-    },
+      body: JSON.stringify(d.data),
+    })
+      .then((r) => r.json())
+      .then(d.onData, d.onError);
   },
-);
+  error: console.error,
+  showTip: (e) =>
+    wx.showToast({
+      title: e.text,
+      icon: e.color === 'success' ? 'success' : 'none',
+    }),
+  token: {
+    get: (k) => wx.getStorageSync(k),
+    set: (d) => each(d, (v, k) => wx.setStorageSync(k, v)),
+  },
+});

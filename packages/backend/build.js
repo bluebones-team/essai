@@ -55,12 +55,13 @@ function modify() {
   return promise;
 }
 
-const root = path.dirname(fileURLToPath(import.meta.url));
-const entrypath = path.join(root, 'src/app.ts');
-const outdir = path.join(root, 'dist');
+const entrypath = path.resolve('src/app.ts');
+const outdir = path.resolve('dist');
 const outpath = path.join(
   outdir,
   path.basename(entrypath).replace(/\.ts$/, '.js'),
 );
+console.log({ entrypath, outdir, outpath });
+
 await build();
-await modify();
+fs.existsSync(outpath) ? modify() : console.error(`can't find ${outpath}`);

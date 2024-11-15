@@ -7,7 +7,7 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi-svg';
 import { en, zhHans } from 'vuetify/locale';
 import { cyan, grey, indigo, purple, teal } from 'vuetify/util/colors';
 
-export type ActualTheme = Exclude<Theme, typeof Theme.System._value>;
+export type ActualTheme = Exclude<Theme, typeof Theme.System.value>;
 export type AppTheme = ReturnType<typeof toAppTheme>;
 export function toAppTheme(role: Role, theme: ActualTheme) {
   return `${role}-${theme}` as const;

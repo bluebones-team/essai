@@ -7,38 +7,22 @@ import { VRangeSlider } from 'vuetify/components/VRangeSlider';
 import { VSelect } from 'vuetify/components/VSelect';
 import { VTextField } from 'vuetify/components/VTextField';
 import { Container } from '~/components/container';
-import { useDefaults } from '~/ts/hook';
+import { checkModel } from '~/ts/util';
+import { NumberInput } from './number-input';
 
-const NumInp = defineComponent(
-  (p: {
-    modelValue?: number;
-    'onUpdate:modelValue'?: (value: number) => void;
-  }) => {
-    const model = useModel(p, 'modelValue');
-    return () => (
-      <VTextField
-        v-model={model.value}
-        style="width: 4rem"
-        variant="outlined"
-        density="compact"
-        type="number"
-        hideDetails
-        singleLine
-      />
-    );
-  },
-);
+const NumInput = defineComponent(() => () => (
+  <NumberInput
+    style="width: 4rem"
+    variant="outlined"
+    density="compact"
+    hideDetails
+    singleLine
+  />
+));
 export const SimpleFilter = defineComponent(
-  (
-    p: { onSearch(): void; 'onShow:advanced'(): void } & {
-      modelValue?: string;
-      'onUpdate:modelValue'?: (value: string) => void;
-    },
-  ) => {
-    const model = useModel(p, 'modelValue');
+  (p: { onSearch(): void; 'onShow:advanced'(): void }) => {
     return () => (
       <VTextField
-        v-model={model.value}
         type="search"
         class="mx-4 w-100"
         variant="solo"
@@ -62,21 +46,13 @@ export const SimpleFilter = defineComponent(
 export const AdvancedFilter = defineComponent(
   (
     p: { range: Filter.Range } & {
-      modelValue?: RequiredKeys<Filter.Data, keyof Filter.Range>;
+      modelValue?: RequiredByKey<Filter.Data, keyof Filter.Range>;
       'onUpdate:modelValue'?: (
-        value: RequiredKeys<Filter.Data, keyof Filter.Range>,
+        value: RequiredByKey<Filter.Data, keyof Filter.Range>,
       ) => void;
     },
   ) => {
-    const model = useModel(
-      useDefaults(p, {
-        modelValue: () => ({
-          rtype: RecruitmentType.Subject._value,
-          ...p.range,
-        }),
-      }),
-      'modelValue',
-    );
+    const model = useModel(checkModel(p), 'modelValue');
     const { xs } = useDisplay();
     const display = [
       [
@@ -93,8 +69,8 @@ export const AdvancedFilter = defineComponent(
         },
         ...(
           [
-            ['项目类型', 'type', ProjectType._items],
-            ['招募类型', 'rtype', RecruitmentType._items],
+            ['项目类型', 'type', ProjectType.items],
+            ['招募类型', 'rtype', RecruitmentType.items],
           ] as const
         ).map(([label, key, items]) => ({
           cols: () => (xs.value ? 12 : 6),
@@ -104,9 +80,9 @@ export const AdvancedFilter = defineComponent(
               {...{
                 label,
                 items: items.map((e) => ({
-                  title: e._name,
+                  title: e.name,
                   subtitle: e.title,
-                  value: e._value,
+                  value: e.value,
                 })),
               }}
               itemProps
@@ -122,34 +98,32 @@ export const AdvancedFilter = defineComponent(
             ['参加次数', 'times_range', ''],
             ['平均时长', 'duration_range', '单位: min/次'],
           ] as const
-        ).map(([label, key, hint]) => {
-          return {
-            cols: 12,
-            comp: () => (
-              <>
-                <p class="pb-1 text-caption">{label}</p>
-                <VRangeSlider
-                  v-model={model.value[key]}
-                  {...{
-                    // label,
-                    type: 'number',
-                    step: 1,
-                    showTicks: key === 'times_range',
-                    min: p.range[key][0],
-                    max: p.range[key][1],
-                    hint,
-                  }}
-                  strict
-                  thumbLabel
-                  v-slots={{
-                    prepend: () => <NumInp v-model={model.value[key][0]} />,
-                    append: () => <NumInp v-model={model.value[key][1]} />,
-                  }}
-                ></VRangeSlider>
-              </>
-            ),
-          };
-        }),
+        ).map(([label, key, hint]) => ({
+          cols: 12,
+          comp: () => (
+            <>
+              <p class="pb-1 text-caption">{label}</p>
+              <VRangeSlider
+                v-model={model.value[key]}
+                {...{
+                  // label,
+                  type: 'number',
+                  step: 1,
+                  showTicks: key === 'times_range',
+                  min: p.range[key][0],
+                  max: p.range[key][1],
+                  hint,
+                }}
+                strict
+                thumbLabel
+                v-slots={{
+                  prepend: () => <NumInput v-model={model.value[key][0]} />,
+                  append: () => <NumInput v-model={model.value[key][1]} />,
+                }}
+              ></VRangeSlider>
+            </>
+          ),
+        })),
       ],
     ];
     return () => <Container display={display} />;

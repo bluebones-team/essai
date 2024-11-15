@@ -3,7 +3,7 @@ import { VRangeSlider } from 'vuetify/components/VRangeSlider';
 import { SectionGroup } from '~/components/section-group';
 import { setting } from '~/ts/state';
 
-export const route: SupplyRoute = {};
+export const route: LooseRouteRecord = {};
 export default defineComponent(
   () => {
     const sections = computed(() => {

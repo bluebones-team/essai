@@ -1,5 +1,5 @@
-import { mapValues } from '..';
 import { z } from 'zod';
+import { mapValues } from '..';
 import {
   filter,
   param,
@@ -10,14 +10,22 @@ import {
   user,
 } from '../data';
 
-export type ApiType = 'get' | 'post' | 'ws';
-export type ApiMeta = Partial<{ token: keyof Shared.Token | '' }>;
+export type ApiMeta = {
+  type: 'post' | 'ws';
+  token: keyof Shared.Token | '';
+};
 export type ApiRecord<
-  Type extends ApiType = ApiType,
   Meta extends ApiMeta = ApiMeta,
-  Req extends z.ZodType = z.ZodType,
-  Res extends z.ZodType = z.ZodType,
-> = { type: Type; meta: Meta; req: Req; res: Res };
+  In extends z.ZodType = z.ZodType,
+  Out extends z.ZodType = z.ZodType,
+> = {
+  /**request metadata */
+  meta: Meta;
+  /**request schema */
+  in: In;
+  /**response schema */
+  out: Out;
+};
 type CheckApiPath<K> = K extends `${infer P}${string}`
   ? If<
       Eq<P, '/'>,
@@ -26,268 +34,257 @@ type CheckApiPath<K> = K extends `${infer P}${string}`
     >
   : never;
 
-const apiDefaultRecord = {
-  type: 'post',
-  meta: { token: 'access' },
-  req: z.null(),
-  res: z.null(),
+const defaultApiRecord = {
+  meta: { type: 'post', token: 'access' },
+  in: z.undefined(),
+  out: z.undefined(),
 } as const satisfies ApiRecord;
-function toApi<T extends Record<string, Partial<ApiRecord>>>(config: {
-  [K in keyof T]: CheckApiPath<K> extends infer R ? If<R, T[K]> : never;
+function toApi<T extends Record<string, Partial<ApiRecord>>>(records: {
+  [K in keyof T]: If<CheckApiPath<K>, T[K]>;
 }) {
-  return mapValues(config, (v) => Object.assign({}, apiDefaultRecord, v)) as {
-    [K in keyof T]: Merge<typeof apiDefaultRecord, T[K]>;
+  return mapValues(records, (v) => {
+    const r: ApiRecord = Object.assign({}, defaultApiRecord, v);
+    return Object.assign(r, { out: shared.output(r.out) });
+  }) as {
+    [K in keyof T]: Merge<typeof defaultApiRecord, T[K]> extends infer R extends
+      ApiRecord
+      ? Merge<R, { out: ReturnType<typeof shared.output<R['out']>> }>
+      : never;
   };
 }
 
-const phone = user.own.shape.phone;
-const pwd = z.string().min(8, '密码长度至少 8 位');
+const { phone, pwd } = user.model.shape;
 const code = z.string().length(6, '验证码长度为 6 位');
 
 export const account = toApi({
   /**密码登录 */
-  login: {
-    req: z.object({ phone, pwd }),
-    res: user.own.merge(shared.token),
-  },
-  /**发送登录验证码 */
-  'phone/code': {
-    req: phone,
+  'login/pwd': {
+    meta: { type: 'post', token: '' },
+    in: z.object({ phone, pwd }),
+    out: user.own.merge(shared.token),
   },
   /**验证码登录 */
   'login/otp': {
-    req: z.object({ phone, code }),
-    res: user.own.merge(shared.token),
+    meta: { type: 'post', token: '' },
+    in: z.object({ phone, code }),
+    out: user.own.merge(shared.token),
   },
-  /**token登录 */
+  /**token 登录 */
   'login/token': {
-    res: user.own,
+    out: user.own,
   },
-  /**退出登录 */
-  logout: {},
   /**注销账号 */
-  signout: {},
+  logout: {},
   /**实名认证 */
   'auth/realname': {
-    req: user.auth,
+    in: user.auth,
   },
   /**招募者认证: 有绑定教育邮箱才能认证 */
-  'auth/recruiter': {
-    req: z.null(),
-  },
+  'auth/recruiter': {},
   'token/refresh': {
-    meta: { token: 'refresh' },
-    res: shared.token,
+    meta: { type: 'post', token: 'refresh' },
+    out: shared.token,
   },
+});
+export const usr = toApi({
+  /**更改基本信息 */
+  'usr/edit': {
+    in: user.editable.partial(),
+  },
+  /**修改密码 */
+  'usr/pwd/edit': {
+    in: z.object({ old: pwd, new: pwd }),
+  },
+  /**发送手机验证码 */
+  'usr/phone/otp': {
+    meta: { type: 'post', token: '' },
+    in: phone,
+  },
+  /**修改手机号 */
+  'usr/phone/edit': {
+    in: z.object({ old: phone, new: phone, code }),
+  },
+  /**发送邮箱验证链接 */
+  'usr/email/otp': {
+    in: z.string().email(),
+  },
+  /**添加邮箱 */
+  'usr/email/add': {
+    in: z.string().email(),
+  },
+  /**删除邮箱 */
+  'usr/email/remove': {
+    in: z.string().email(),
+  },
+  /**退订邮件消息 */
+  'usr/email/unsubscribe': {},
 });
 export const lib = toApi({
   'lib/list': {
-    type: 'get',
-    req: param.page.extend({
+    in: param.page.extend({
       filter: filter.data.pick({ rtype: true }).optional(),
     }),
-    res: participant.lib.array(),
+    out: participant.lib.array(),
   },
   'lib/add': {
-    req: param.uid.merge(param.rtype),
+    in: param.uid.merge(param.rtype),
   },
   'lib/remove': {
-    req: param.uid.merge(param.rtype),
+    in: param.uid.merge(param.rtype),
   },
   /**推送项目 */
   'lib/push': {
-    req: param.pid.merge(param.rtype).extend({
+    in: param.pid.merge(param.rtype).extend({
       uids: z.number().array(),
     }),
   },
 });
 export const notify = toApi({
   'notify/stream': {
-    type: 'ws',
-    res: shared.message,
+    meta: { type: 'ws', token: '' }, // debug only
+    out: shared.message,
   },
   'notify/list': {
-    type: 'get',
-    req: param.page,
-    res: shared.message.array(),
+    in: param.page,
+    out: shared.message.array(),
   },
   'notify/read': {
-    req: param.uid.extend({ mid: shared.message.shape.mid }),
+    in: param.uid.extend({ mid: shared.message.shape.mid }),
   },
 });
 export const ptc = toApi({
   'ptc/list': {
-    req: param.page.merge(param.pid).extend({ filter: filter.data.optional() }),
-    res: participant.join.array(),
+    in: param.page.merge(param.pid).extend({ filter: filter.data.optional() }),
+    out: participant.join.array(),
   },
   'ptc/approve': {
-    req: param.rtype.merge(param.uid),
+    in: param.rtype.merge(param.uid),
   },
   'ptc/reject': {
-    req: param.rtype.merge(param.uid),
+    in: param.rtype.merge(param.uid),
   },
   /**更改日程 */
   'ptc/event': {
-    req: param.uid
+    in: param.uid
       .merge(param.rtype)
       .extend({ starts: shared.timestamp.array() }),
   },
 });
 export const proj = toApi({
   'proj/public': {
-    req: param.pid,
-    res: project.public.data,
+    in: param.pid,
+    out: project.public.data,
   },
   'proj/public/sup': {
-    req: param.pid,
-    res: project.public.supply,
+    in: param.pid,
+    out: project.public.supply,
   },
   'proj/public/list': {
-    type: 'get',
-    meta: { token: '' },
-    req: param.page.extend({
+    meta: { type: 'post', token: '' },
+    in: param.page.extend({
       filter: filter.data.omit({ state: true }).optional(),
     }),
-    res: project.public.preview.array(),
+    out: project.public.preview.array(),
   },
   /**公开项目集范围 */
   'proj/public/range': {
-    res: filter.range,
+    out: filter.range,
   },
   /**用户报名的项目 */
   'proj/joined': {
-    req: param.pid,
-    res: project.joined.data,
+    in: param.pid,
+    out: project.joined.data,
   },
   'proj/joined/sup': {
-    req: param.pid,
-    res: project.joined.supply,
+    in: param.pid,
+    out: project.joined.supply,
   },
   'proj/joined/list': {
-    type: 'get',
-    req: param.page.extend({
+    in: param.page.extend({
       filter: filter.data.pick({ rtype: true }).optional(),
     }),
-    res: project.joined.preview.array(),
+    out: project.joined.preview.array(),
   },
   /**用户创建的项目 */
   'proj/own': {
-    req: param.pid,
-    res: project.own.data,
+    in: param.pid,
+    out: project.own.data,
   },
   'proj/own/sup': {
-    req: param.pid,
-    res: project.own.supply,
+    in: param.pid,
+    out: project.own.supply,
   },
   'proj/own/list': {
-    type: 'get',
-    req: param.page.extend({
+    in: param.page.extend({
       filter: filter.data.pick({ rtype: true }).optional(),
     }),
-    res: project.own.preview.array(),
+    out: project.own.preview.array(),
   },
   /**新建项目 */
   'proj/add': {
-    res: project.own.data,
+    out: project.own.data,
   },
   'proj/edit': {
-    req: project.own.data.omit({ state: true }),
+    in: project.own.data.omit({ state: true }),
   },
   'proj/publish': {
-    req: param.pid,
+    in: param.pid,
   },
   'proj/remove': {
-    req: param.pid,
+    in: param.pid,
   },
   'proj/join': {
-    req: param.pid.merge(param.rtype).extend({
+    in: param.pid.merge(param.rtype).extend({
       starts: shared.timestamp.array().optional(),
     }),
   },
 });
 export const rpt = toApi({
   'rpt/proj': {
-    req: report.project,
+    in: report.project,
   },
   /**举报用户 */
   'rpt/user': {
-    req: report.user,
+    in: report.user,
   },
 });
 export const sched = toApi({
   /**公开项目日程 */
   'sched/public': {
-    req: param.pid.merge(param.rtype),
-    res: project.public.schedule.omit({ pid: true, rtype: true }).array(),
+    in: param.pid.merge(param.rtype),
+    out: project.public.schedule.omit({ pid: true, rtype: true }).array(),
   },
   'sched/joined': {
-    req: param.pid.merge(param.rtype),
-    res: project.joined.schedule.omit({ pid: true, rtype: true }).array(),
+    in: param.pid.merge(param.rtype),
+    out: project.joined.schedule.omit({ pid: true, rtype: true }).array(),
   },
   'sched/own': {
-    req: param.pid.merge(param.rtype),
-    res: project.own.schedule.omit({ pid: true, rtype: true }).array(),
+    in: param.pid.merge(param.rtype),
+    out: project.own.schedule.omit({ pid: true, rtype: true }).array(),
   },
   'sched/joined/all': {
-    res: project.joined.schedule.array(),
+    out: project.joined.schedule.array(),
   },
   'sched/own/all': {
-    res: project.own.schedule.array(),
+    out: project.own.schedule.array(),
   },
 });
-export const usr = toApi({
-  /**更改基本信息 */
-  'usr/edit': {
-    req: user.editable.partial(),
-  },
-  /**获取所有可用的用户头像 */
-  'usr/face/list': {
-    type: 'get',
-    meta: { token: '' },
-    res: z.string().array(),
-  },
-  /**用户账号是否有密码 */
-  'usr/pwd/has': {
-    res: z.boolean(),
-  },
-  /**添加密码 */
-  'usr/pwd/add': {
-    req: pwd,
-  },
-  /**修改密码 */
-  'usr/pwd/edit': {
-    req: z.object({ old: pwd, new: pwd }),
-  },
-  /**向新手机号发送验证码 */
-  'usr/phone/send': {
-    req: phone,
-  },
-  /**修改手机号 */
-  'usr/phone/edit': {
-    req: z.object({ old: phone, new: phone, code }),
-  },
-  /**添加邮箱，向邮箱发送验证链接 */
-  'usr/email/add': {
-    req: z.string().email(),
-  },
-  /**删除邮箱，向邮箱发送验证链接 */
-  'usr/email/remove': {
-    req: z.string().email(),
-  },
-  /**退订邮件消息 */
-  'usr/email/unsubscribe': {
-    type: 'get',
+const batch = toApi({
+  batch: {
+    in: z.object({ p: z.string(), d: z.any() }).array().min(2),
+    out: shared.output().array().min(2),
   },
 });
 
 export const apiConfig = {
   ...account,
+  ...usr,
   ...lib,
   ...notify,
   ...ptc,
   ...proj,
   ...rpt,
   ...sched,
-  ...usr,
+  ...batch,
 };
 export type ApiConfig = typeof apiConfig;

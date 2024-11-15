@@ -1,24 +1,5 @@
 import { each } from 'shared';
-
-export const Duration2Timestamp = (duration: Shared.Duration) =>
-  (duration * 60) as Shared.Timestamp;
-export const Timestamp2Date = (timestamp: Shared.Timestamp) =>
-  new Date(timestamp * 1e3);
-export const Date2Timestamp = (date: Date) =>
-  Math.floor(date.getTime() * 1e-3) as Shared.Timestamp;
-/**获取年龄 */
-export function Birthday2Age(birthday: Shared.Timestamp) {
-  const now = new Date();
-  const birth = Timestamp2Date(birthday);
-  return now.getFullYear() - birth.getFullYear();
-}
-/**获取生日 */
-export function Age2Birthday(age: number) {
-  const now = new Date();
-  const birth = new Date();
-  birth.setFullYear(now.getFullYear() - age);
-  return Date2Timestamp(birth);
-}
+import { ts_date } from 'shared/data';
 
 const parse = (date: Date) => ({
   Y: date.getFullYear() + '',
@@ -34,7 +15,7 @@ export function dateFormat(
   format = 'YYYY/MM/DD',
 ) {
   if (typeof date === 'number') {
-    date = Timestamp2Date(date);
+    date = ts_date(date);
   }
   const { Y, M, D, h, m, s } = parse(date);
   const formatMap = {

@@ -2,7 +2,6 @@ import {
   computed,
   defineComponent,
   inject,
-  useModel,
   type ComputedRef,
   type SetupContext,
 } from 'vue';
@@ -24,22 +23,18 @@ function useSizeStyle(mobile: ComputedRef<boolean>) {
 export const Form = defineComponent(function (
   p: {
     size?: keyof ReturnType<typeof useSizeStyle>['value'];
-    actions?: RequiredKeys<Props<VBtn>, 'text'>[];
+    actions?: RequiredByKey<Props<VBtn>, 'text'>[];
     onPass?(): void;
     onFail?(errors: Awaited<SubmitEventPromise>['errors']): void;
-  } & {
-    modelValue?: boolean;
-    'onUpdate:modelValue'?: (value: boolean) => void;
   },
   { slots }: Omit<SetupContext, 'expose'>,
 ) {
-  const model = useModel(p, 'modelValue');
+  // const p = checkModel(_p);
   const editable = toComputed(inject(injection.editable, true));
   const { mobile } = useDisplay();
   const sizeStyle = useSizeStyle(mobile);
   return () => (
     <VForm
-      v-model={model.value}
       validateOn="submit lazy"
       fastFail
       readonly={!editable.value}

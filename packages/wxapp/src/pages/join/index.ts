@@ -1,4 +1,4 @@
-import { client } from '~/ts/util';
+import { c } from '~/ts/util';
 import { defineComponent, reactive } from '@vue-mini/core';
 
 defineComponent(() => {
@@ -8,7 +8,7 @@ defineComponent(() => {
   return {
     state,
     getList() {
-      new client('proj/public/list', { pn: 1, ps: 20 }).send({
+      c['proj/public/list'].send({ pn: 1, ps: 20 }).send({
         0(res) {
           state.list = res.data;
         },

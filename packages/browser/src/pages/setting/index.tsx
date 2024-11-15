@@ -33,7 +33,7 @@ function useNavItems() {
   ).flat();
 }
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   redirect(to) {
     const [norm] = to.matched;
     if (norm.path !== '/setting') return '/404';

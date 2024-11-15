@@ -16,7 +16,7 @@
     "vue": "^3.4.38",
     "vue-cal": "^4.9.0",
     "vue-router": "^4.4.3",
-    "vuetify": "^3.7.0"
+    "vuetify": "^3.7.4"
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.4",

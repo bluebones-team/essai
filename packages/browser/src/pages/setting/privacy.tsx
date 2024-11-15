@@ -4,7 +4,7 @@ import { SectionGroup } from '~/components/section-group';
 import { setting, udata } from '~/ts/state';
 import { comp } from './components/util';
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '隐私权限',

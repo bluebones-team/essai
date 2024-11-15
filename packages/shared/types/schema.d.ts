@@ -70,6 +70,7 @@ declare global {
     type Public = z.infer<typeof user.public>;
     type Editable = z.infer<typeof user.editable>;
     type Own = z.infer<typeof user.own>;
+    type Model = z.infer<typeof user.model>;
     type Auth = z.infer<typeof user.auth>;
   }
   namespace ReportData {

@@ -1,18 +1,18 @@
 import { ref } from 'vue';
 import { VEmptyState } from 'vuetify/components/VEmptyState';
 import { VMain } from 'vuetify/components/VMain';
-import { client } from '~/ts//client';
+import { c } from '~/ts//client';
 import { defineComponent } from 'vue';
 
 const text = ref('确定退订邮件通知吗？');
 function unsubscribe() {
-  new client('usr/email/unsubscribe', null).send({
+  c['usr/email/unsubscribe'].send(void 0, {
     0() {
       text.value = '退订成功';
     },
   });
 }
-export const route: SupplyRoute = {};
+export const route: LooseRouteRecord = {};
 export default defineComponent(
   () => () => (
     <VMain>

@@ -33,8 +33,8 @@ import { VToolbar } from 'vuetify/components/VToolbar';
 import { Dialog } from '~/components/dialog';
 import { ProjectInfo } from '~/components/proj-info';
 import { Table } from '~/components/table';
-import { client } from '~/ts/client';
-import { Birthday2Age } from '~/ts/date';
+import { c } from '~/ts/client';
+import { birth_age } from 'shared/data';
 import { usePopup, useProjData, useTempModel } from '~/ts/hook';
 import { injection, snackbar } from '~/ts/state';
 import { error } from '~/ts/util';
@@ -55,7 +55,7 @@ const _Table = () => (
         key: 'type',
         value: (item) => (
           <VChip color={ProjectType[item.type].color}>
-            {ProjectType[item.type]._name}
+            {ProjectType[item.type].name}
           </VChip>
         ),
       },
@@ -71,11 +71,14 @@ const _Table = () => (
             variant="text"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
-              new client('proj/remove', { pid: item.pid }).send({
-                0(res) {
-                  proj.list.splice(proj.list.indexOf(item), 1);
+              c['proj/remove'].send(
+                { pid: item.pid },
+                {
+                  0(res) {
+                    proj.list.splice(proj.list.indexOf(item), 1);
+                  },
                 },
-              });
+              );
             }}
           ></VBtn>
         ),
@@ -93,8 +96,8 @@ const _Table = () => (
             divided
             mandatory
           >
-            {ProjectState._items.map((e) => (
-              <VBtn value={e._value}>{e.title}</VBtn>
+            {ProjectState.items.map((e) => (
+              <VBtn value={e.value}>{e.title}</VBtn>
             ))}
           </VBtnToggle>
         </VToolbar>
@@ -109,7 +112,7 @@ const _Table = () => (
   />
 );
 const _Fab = () =>
-  filter.data.state === ProjectState.Ready._value ? (
+  filter.data.state === ProjectState.Ready.value ? (
     <VFab
       class="ms-4"
       icon="$plus"
@@ -117,7 +120,7 @@ const _Fab = () =>
       absolute
       app
       onClick={() => {
-        new client('proj/add', null).send({
+        c['proj/add'].send(void 0, {
           0(res) {
             proj.list.push(res.data);
             proj.preview = res.data;
@@ -140,7 +143,7 @@ const _Detail = defineComponent(() => {
   async function save() {
     const tempModel = check();
     if (temp.hasChange.value) {
-      await new client('proj/edit', tempModel).send({
+      await c['proj/edit'].send(tempModel, {
         0(res) {
           temp.save();
           snackbar.show({
@@ -156,12 +159,18 @@ const _Detail = defineComponent(() => {
   async function publish() {
     await save();
     const tempModel = check();
-    new client('proj/publish', { pid: tempModel.pid }).send({
-      0(res) {
-        tempModel.state = ProjectState.Passed._value;
-        snackbar.show({ text: `${tempModel.title} 已发布`, color: 'success' });
+    c['proj/publish'].send(
+      { pid: tempModel.pid },
+      {
+        0(res) {
+          tempModel.state = ProjectState.Passed.value;
+          snackbar.show({
+            text: `${tempModel.title} 已发布`,
+            color: 'success',
+          });
+        },
       },
-    });
+    );
   }
 
   const actions = computed<Props<typeof ProjectInfo>['actions']>(() =>
@@ -180,7 +189,7 @@ const _Detail = defineComponent(() => {
             class: 'mr-4',
           },
         ]
-      : proj.preview?.state === ProjectState.Passed._value
+      : proj.preview?.state === ProjectState.Passed.value
         ? [
             {
               text: '参与者',
@@ -226,7 +235,7 @@ const _PtcList = () => {
         {
           title: '年龄',
           key: 'birthday',
-          value: (item) => Birthday2Age(item.birthday),
+          value: (item) => birth_age(item.birthday),
         },
         {
           title: '操作',
@@ -240,14 +249,14 @@ const _PtcList = () => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                new client('ptc/reject', {
-                  rtype: ptc.rtype,
-                  uid: item.uid,
-                }).send({
-                  0(res) {
-                    ptc.list.splice(ptc.list.indexOf(item), 1);
+                c['ptc/reject'].send(
+                  { rtype: ptc.rtype, uid: item.uid },
+                  {
+                    0(res) {
+                      ptc.list.splice(ptc.list.indexOf(item), 1);
+                    },
                   },
-                });
+                );
               }}
             ></VBtn>
           ),
@@ -269,7 +278,7 @@ const _PtcList = () => {
           >
             {proj.data?.recruitments.map(({ rtype }) => {
               const e = RecruitmentType[rtype];
-              return <VBtn value={e._value}>{e.title}</VBtn>;
+              return <VBtn value={e.value}>{e.title}</VBtn>;
             })}
           </VBtnToggle>,
         ],
@@ -288,7 +297,7 @@ watchEffect(() => {
   }
 });
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '项目管理',
@@ -297,7 +306,7 @@ export const route: SupplyRoute = {
     },
     need: {
       login: true,
-      role: Role.Recruiter._value,
+      role: Role.Recruiter.value,
     },
   },
 };

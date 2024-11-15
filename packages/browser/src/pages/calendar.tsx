@@ -1,11 +1,11 @@
 import { defineComponent, ref } from 'vue';
 import { VMain } from 'vuetify/components/VMain';
 import { Calendar } from '~/components/calendar';
-import { client } from '~/ts/client';
+import { c } from '~/ts/client';
 
 const userSchedule = ref<Project['joined']['Schedule'][]>([]);
 function getUserSchedule() {
-  return new client('sched/joined/all', null).send({
+  return c['sched/joined/all'].send(void 0, {
     0(res) {
       userSchedule.value = res.data;
     },
@@ -13,7 +13,7 @@ function getUserSchedule() {
 }
 const ownProjectSchedule = ref<Project['own']['Schedule'][]>([]);
 function getAllOwnProjectSchedule() {
-  return new client('sched/own/all', null).send({
+  return c['sched/own/all'].send(void 0, {
     0(res) {
       ownProjectSchedule.value = res.data;
     },
@@ -23,7 +23,7 @@ const selectedEvent = ref<
   Project['joined']['Schedule'] | Project['own']['Schedule']
 >();
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     // nav: {
     //   tip: '日程表',

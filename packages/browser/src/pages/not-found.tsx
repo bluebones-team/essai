@@ -4,7 +4,7 @@ import { VBtn } from 'vuetify/components/VBtn';
 import { VEmptyState } from 'vuetify/components/VEmptyState';
 import { VMain } from 'vuetify/components/VMain';
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   path: '/:pathMatch(.*)*',
 };
 export default defineComponent(

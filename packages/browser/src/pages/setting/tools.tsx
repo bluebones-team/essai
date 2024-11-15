@@ -1,7 +1,7 @@
 import { SectionGroup } from '~/components/section-group';
 import { computed, defineComponent } from 'vue';
 
-export const route: SupplyRoute = {};
+export const route: LooseRouteRecord = {};
 export default defineComponent(
   () => {
     const sections = computed(() => {

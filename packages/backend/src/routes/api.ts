@@ -1,88 +1,92 @@
-import {
-  initTRPC,
-  type inferParser,
-  type ProcedureBuilder,
-} from '@trpc/server';
-import { observable } from '@trpc/server/observable';
-import { mapValues } from 'shared';
-import {
-  apiConfig,
-  type ApiConfig,
-  type ApiRecord,
-  type ApiType,
-} from 'shared/router';
-import type { shared } from 'shared/data';
-import { zocker } from 'zocker';
-import { z } from 'zod';
-import { output, type Context, type Middleware } from '.';
-import { auth } from './middleware';
+import { date_ts, Gender } from 'shared/data';
+import type { ApiConfig, Input, Output } from 'shared/router';
+import { model, redis, sms } from '~/client';
+import { dataCreater, tokenMgr } from '~/service';
+import type { Context } from '.';
+import { o } from './util';
 
-export const t = initTRPC.context<Context>().create({});
-const proc = t.procedure;
-
-type ApiProcedureType<Type extends ApiType> = (typeof apiTypeMap)[Type];
-// type ApiOutput<
-//   Type extends ApiType,
-//   Res extends z.ZodType,
-//   K extends 'in' | 'out',
-// > =
-//   ApiProcedureType<Type> extends 'subscription'
-//     ? Observable<Shared.Output<z.infer<Res>>, unknown>
-//     : inferParser<ReturnType<typeof shared.output<Res>>>[K];
-type ApiProcedureParams<Req extends z.ZodType, Res extends z.ZodType> =
-  typeof proc extends ProcedureBuilder<infer T>
-    ? Merge<
-        T,
-        {
-          _input_in: inferParser<Req>['out']; // compatible with z.zodBrand
-          _input_out: inferParser<Req>['out'];
-          _output_in: inferParser<ReturnType<typeof shared.output<Res>>>['in'];
-          _output_out: inferParser<
-            ReturnType<typeof shared.output<Res>>
-          >['out'];
-        }
-      >
-    : never;
-type ApiProcedureBuilder<Api> =
-  Api extends ApiRecord<infer Type, infer Meta, infer Req, infer Res>
-    ? ProcedureBuilder<ApiProcedureParams<Req, Res>>[ApiProcedureType<Type>]
-    : never;
-
-const apiTypeMap = {
-  get: 'query',
-  post: 'mutation',
-  ws: 'subscription',
-} as const;
-/**API Record -> Procedure */
-export function toProc(api: ApiRecord, fn: (...e: any) => any) {
-  const middles: Middleware[] = [];
-  if (api.meta?.token) middles.push(auth);
-  return middles
-    .reduce((acc, m) => acc.use(m), proc.input(api.req)) // 为减小服务器压力，这里不做 output 校验
-    [apiTypeMap[api.type]](fn);
-}
-/**路径-实现映射 -> Router，并提供类型检查 */
-export function toRouter(pathImplementMap: {
-  [K in keyof ApiConfig]?: Parameters<ApiProcedureBuilder<ApiConfig[K]>>[0];
-}) {
-  const routerRecord = mapValues(apiConfig, (api, k) =>
-    toProc(
-      api,
-      // pathImplementMap[k]
-      // 不调用接口实现，直接返回 mock 数据, 方便调试
-      api.type === 'ws'
-        ? () =>
-            observable((emit) => {
-              const timer = setInterval(() => {
-                emit.next(output.succ(zocker(api.res).generate()));
-              }, 3e3);
-              setTimeout(() => clearInterval(timer), 10e3);
-              return () => clearInterval(timer);
-            })
-        : () => output.succ(zocker(api.res).generate()),
-    ),
-  ) as {
-    [K in keyof ApiConfig]: ReturnType<ApiProcedureBuilder<ApiConfig[K]>>;
-  };
-  return t.router(routerRecord);
-}
+export const routes: {
+  [P in keyof ApiConfig]?: (
+    ctx: Context & { input: Input[P] },
+  ) => MaybePromise<PartialByKey<Output[P], 'data'>>;
+} = {
+  //#region account
+  async 'login/pwd'({ input }) {
+    const { phone, pwd } = input;
+    const user = await model.user.findOne({ phone });
+    if (!user) return o('fail', '用户不存在');
+    if (user.pwd && user.pwd !== pwd) return o('fail', '密码错误');
+    return o('succ', Object.assign(tokenMgr.create(user), user.toOwn()));
+  },
+  async 'login/otp'({ input }) {
+    const { phone, code } = input;
+    const authCode = await redis.get(`otp:${phone}`);
+    if (!authCode) return o('fail', '请获取验证码');
+    if (authCode !== code) return o('fail', '验证码错误');
+    const user =
+      (await model.user.findOne({ phone })) ??
+      (await model.user.add({
+        phone,
+        gender: Gender.Female.value,
+        birthday: date_ts('1990-01-01'),
+        pwd: 'accdda',
+      }));
+    return o('succ', Object.assign(tokenMgr.create(user), user.toOwn()));
+  },
+  async 'login/token'({ input, user }) {
+    return o('succ', Object.assign(user.toOwn()));
+  },
+  async logout({ input, user }) {
+    const data = await user.deleteOne();
+    return data.acknowledged ? o('succ', void 0) : o('fail', '注销失败');
+  },
+  async 'token/refresh'({ input, user }) {
+    return o('succ', tokenMgr.create(user));
+  },
+  //#region user
+  async 'usr/edit'({ input, user }) {
+    await user.updateOne(input);
+    return o('succ', void 0);
+  },
+  async 'usr/pwd/edit'({ input, user }) {
+    const { old: oldPwd, new: newPwd } = input;
+    if (user.pwd && user.pwd !== oldPwd) return o('fail', '旧密码错误');
+    await user.updateOne({ pwd: newPwd });
+    return o('succ', void 0);
+  },
+  async 'usr/phone/otp'({ input }) {
+    const phone = input;
+    const code = dataCreater.otp();
+    console.debug('otp', code);
+    if (await redis.get(`otp:${phone}`))
+      return o('fail', '验证码已发送，请稍后再试');
+    if (!(await sms.send(phone, code))) return o('fail', '短信发送失败');
+    await redis.set(`otp:${phone}`, code, { EX: sms.OTP_EX });
+    return o('succ', void 0);
+  },
+  //#region notify
+  /**@see https://trpc.io/docs/v10/subscriptions */
+  //@ts-ignore
+  // 'notify/stream'( {input} ) {
+  //   return observable<Output['notify/stream']>((emit) => {
+  //     const timer = setInterval(() => {
+  //       emit.next(
+  //         o(
+  //           'succ',
+  //           dataCreater.msg({
+  //             uid: 1,
+  //             type: MessageType.enums[
+  //               Math.floor(Math.random() * MessageType.enums.length)
+  //             ],
+  //             title: 'Title of message',
+  //             content:
+  //               'In the fantasy world, today, the sky suddenly turned pink...',
+  //           }),
+  //         ),
+  //       );
+  //     }, 3e3);
+  //     setTimeout(() => clearInterval(timer), 10e3);
+  //     return () => clearInterval(timer);
+  //   });
+  // },
+};

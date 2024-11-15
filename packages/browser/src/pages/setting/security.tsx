@@ -5,7 +5,7 @@ import {
 } from '@mdi/js';
 import { usr } from 'shared/router';
 import { progress } from 'shared/router';
-import { useValidator } from 'shared';
+import { toFieldRules } from 'shared';
 import { computed, defineComponent, reactive, ref } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
@@ -15,10 +15,10 @@ import { Dialog } from '~/components/dialog';
 import { Form } from '~/components/form';
 import { OtpInput } from '~/components/forms/otp-input';
 import { SectionGroup } from '~/components/section-group';
-import { client } from '~/ts//client';
+import { c } from '~/ts//client';
 import { udata } from '~/ts/state';
 
-const rules = useValidator(usr['usr/pwd/edit'].req);
+const rules = toFieldRules(usr['usr/pwd/edit'].in);
 /**更改密码 */
 function passwordEditInput() {
   const loading = ref(false);
@@ -59,7 +59,7 @@ function passwordEditInput() {
         },
       ]}
       onPass={() => {
-        new client('usr/pwd/edit', data).use(progress(loading, 'value')).send();
+        c['usr/pwd/edit'].use(progress(loading, 'value')).send(data);
       }}
     >
       <Container display={display} />
@@ -71,7 +71,7 @@ function phoneEditInput() {
   return () => <OtpInput onPass:code={(data) => {}} />;
 }
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '账号安全',
@@ -140,7 +140,7 @@ export default defineComponent(
                     color: 'error',
                     icon: mdiDeleteOutline,
                     onClick() {
-                      new client('usr/email/remove', e).send();
+                      c['usr/email/remove'].send(e);
                     },
                   }}
                 />

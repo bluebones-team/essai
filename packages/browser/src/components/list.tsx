@@ -7,6 +7,7 @@ import {
 } from 'vuetify/components/VList';
 import { VScrollYReverseTransition } from 'vuetify/components/transitions';
 import { useDefaults } from '~/ts/hook';
+import { checkModel } from '~/ts/util';
 
 const typePropsMap = {
   default: {
@@ -96,7 +97,7 @@ export const List = defineComponent(function <T>(
       <VList
         selected={[model.value]}
         onUpdate:selected={(e) => {
-          //@ts-ignore
+          // @ts-ignore
           model.value = e[0];
         }}
         mandatory

@@ -12,7 +12,7 @@ export function Feedback() {
       {
         comp: () => (
           <VRadioGroup v-model={type.value} label="类型" inline hideDetails>
-            {FeedbackType._items.map(({ title, _value }) => (
+            {FeedbackType.items.map(({ title, value: _value }) => (
               <VRadio {...{ label: title, value: _value }} />
             ))}
           </VRadioGroup>

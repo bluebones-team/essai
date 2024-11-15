@@ -2,12 +2,12 @@
 import 'vue-cal/dist/vuecal.css';
 import '~/style/vuecal.css';
 
-import { EventType, RecruitmentType } from 'shared/data';
+import { date_ts, EventType, RecruitmentType, ts_date } from 'shared/data';
 import { computed, defineComponent, ref, watchEffect } from 'vue';
 import VueCal, { type vuecal } from 'vue-cal';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VToolbar } from 'vuetify/components/VToolbar';
-import { Date2Timestamp, Timestamp2Date, dateFormat } from '~/ts/date';
+import { dateFormat } from '~/ts/date';
 import { useDefaults } from '~/ts/hook';
 import { setting } from '~/ts/state';
 import { error } from '~/ts/util';
@@ -19,11 +19,11 @@ function Schedule2Event(
 ) {
   const { rtype } = schedule;
   return {
-    start: Timestamp2Date(schedule.start),
-    end: Timestamp2Date(schedule.end),
+    start: ts_date(schedule.start),
+    end: ts_date(schedule.end),
     title: RecruitmentType[rtype].title,
     class: `event-${eventType}-${rtype}`,
-    draggable: eventType !== EventType.Public._value,
+    draggable: eventType !== EventType.Public.value,
     meta: {
       index,
       eventType,
@@ -34,7 +34,7 @@ function Schedule2Event(
 }
 
 export const Calendar = defineComponent(function (
-  _props: {
+  props: {
     public?: Project['public']['Schedule'][];
     joined?: Project['joined']['Schedule'][];
     own?: Project['own']['Schedule'][];
@@ -47,10 +47,10 @@ export const Calendar = defineComponent(function (
   },
   { slots },
 ) {
-  const props = useDefaults(_props, {
-    public: () => [],
-    joined: () => [],
-    own: () => [],
+  const p = useDefaults(props, {
+    public: [],
+    joined: [],
+    own: [],
     draggable: false,
     activeView: 'month',
   });
@@ -58,9 +58,9 @@ export const Calendar = defineComponent(function (
 
   // 按钮
   const vuecal = ref<vuecal.Instance>();
-  const activeView = ref(props.activeView);
+  const activeView = ref(p.activeView);
   watchEffect(() => {
-    activeView.value = props.activeView;
+    activeView.value = p.activeView;
   });
   function Header() {
     const btns = [
@@ -97,13 +97,9 @@ export const Calendar = defineComponent(function (
   // 日程表
   const timeStep = 15;
   const events = computed(() => [
-    ...props.public.map((e, i) =>
-      Schedule2Event(e, i, EventType.Public._value),
-    ),
-    ...props.joined.map((e, i) =>
-      Schedule2Event(e, i, EventType.Joined._value),
-    ),
-    ...props.own.map((e, i) => Schedule2Event(e, i, EventType.Own._value)),
+    ...p.public.map((e, i) => Schedule2Event(e, i, EventType.Public.value)),
+    ...p.joined.map((e, i) => Schedule2Event(e, i, EventType.Joined.value)),
+    ...p.own.map((e, i) => Schedule2Event(e, i, EventType.Own.value)),
   ]);
   const vcProps = computed<vuecal.Props>(() => {
     return {
@@ -124,7 +120,7 @@ export const Calendar = defineComponent(function (
       timeCellHeight: (64 * timeStep) / 60,
       events: events.value,
       editableEvents: {
-        drag: props.draggable,
+        drag: p.draggable,
         title: false,
         resize: false,
         delete: false,
@@ -163,22 +159,22 @@ export const Calendar = defineComponent(function (
       <VueCal
         ref={vuecal}
         v-model:activeView={activeView.value}
-        onCellClick={(e: Date) => props['onCreate:event']?.(e)}
-        onEventFocus={(e: vuecal.Event) => props['onClick:event']?.(e.meta.raw)}
+        onCellClick={(e: Date) => p['onCreate:event']?.(e)}
+        onEventFocus={(e: vuecal.Event) => p['onClick:event']?.(e.meta.raw)}
         onEventDrop={(e: vuecal.EventChange) => {
           const { event } = e;
           const { meta } = event;
           ({
-            [EventType.Joined._value]() {
-              props.joined[meta.index].start = Date2Timestamp(event.start);
-              props.joined[meta.index].end = Date2Timestamp(event.end);
+            [EventType.Joined.value]() {
+              p.joined[meta.index].start = date_ts(event.start);
+              p.joined[meta.index].end = date_ts(event.end);
             },
-            [EventType.Public._value]() {
+            [EventType.Public.value]() {
               error('公共项目日程不可拖动');
             },
-            [EventType.Own._value]() {
-              props.own[meta.index].start = Date2Timestamp(event.start);
-              props.own[meta.index].end = Date2Timestamp(event.end);
+            [EventType.Own.value]() {
+              p.own[meta.index].start = date_ts(event.start);
+              p.own[meta.index].end = date_ts(event.end);
             },
           })[meta.eventType as EventType]?.();
         }}

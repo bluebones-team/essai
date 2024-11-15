@@ -18,7 +18,7 @@ const ThemePanel = defineComponent(() => {
       mandatory
       items={[
         {
-          value: Theme.System._value,
+          value: Theme.System.value,
           comp: ({ isSelected, toggle }) => [
             <div class="position-relative" onClick={toggle}>
               {panel.content({
@@ -35,11 +35,11 @@ const ThemePanel = defineComponent(() => {
           ],
         },
         {
-          value: Theme.Light._value,
+          value: Theme.Light.value,
           comp: panel.toComp(Theme.Light.title, { theme: 'light' }),
         },
         {
-          value: Theme.Dark._value,
+          value: Theme.Dark.value,
           comp: panel.toComp(Theme.Dark.title, { theme: 'dark' }),
         },
       ]}
@@ -57,9 +57,9 @@ const RolePanel = defineComponent(() => {
         mandatory
         items={[
           {
-            value: Role.Participant._value,
+            value: Role.Participant.value,
             comp: panel.toComp(Role.Participant.title, {
-              theme: toAppTheme(Role.Participant._value, theme.actual),
+              theme: toAppTheme(Role.Participant.value, theme.actual),
               style: {
                 '--v-theme-on-surface': 'var(--v-theme-primary)',
                 '--v-border-opacity': 0.12,
@@ -67,9 +67,9 @@ const RolePanel = defineComponent(() => {
             }),
           },
           {
-            value: Role.Recruiter._value,
+            value: Role.Recruiter.value,
             comp: panel.toComp(Role.Recruiter.title, {
-              theme: toAppTheme(Role.Recruiter._value, theme.actual),
+              theme: toAppTheme(Role.Recruiter.value, theme.actual),
               style: {
                 '--v-theme-on-surface': 'var(--v-theme-primary)',
                 '--v-border-opacity': 0.12,
@@ -83,7 +83,7 @@ const RolePanel = defineComponent(() => {
     );
 });
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '外观',

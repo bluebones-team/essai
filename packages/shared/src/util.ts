@@ -1,27 +1,29 @@
-type LooseObject = Record<string, any>;
+import type { z } from 'zod';
+
 type ObjectIterator<T, R> = (v: T[keyof T], k: string, o: T) => R;
 
-export function errorFactory<T extends boolean = true>(
-  options: Partial<{
-    console: boolean;
-    debugger: boolean;
-    throw: T;
-    cb: (msg: string) => void;
-  }> = {},
-) {
-  options = Object.assign(
-    { console: true, debugger: true, throw: true },
-    options,
-  );
+export function errorFactory<T extends boolean = true>(opts: {
+  console: boolean;
+  debugger: boolean;
+  throw: T;
+  cb?(msg: string): void;
+}) {
   // @ts-ignore
   return (msg: string, ...data: any[]): T extends true ? never : void => {
-    if (options.debugger) debugger;
-    if (options.console) console.error(msg, ...data);
-    options.cb?.(msg);
-    if (options.throw) throw msg;
+    if (opts.debugger) debugger;
+    if (opts.console) {
+      console.error(msg, ...data);
+      console.trace();
+    }
+    opts.cb?.(msg);
+    if (opts.throw) throw new Error(msg);
   };
 }
-export const error = errorFactory();
+export const error = errorFactory({
+  console: true,
+  debugger: true,
+  throw: true,
+});
 
 //#region lodash
 export function isObject(obj: unknown): obj is LooseObject {
@@ -71,6 +73,20 @@ export function pick<T extends LooseObject, K extends keyof T>(
     }
   });
   return result as Pick<T, K>;
+}
+/**@example omit({a: 1, b: 2, c: 3}, ['a', 'c']) // {b: 2} */
+export function omit<T extends LooseObject, K extends keyof T>(
+  obj: T,
+  keys: K[],
+) {
+  if (!isObject(obj)) return error('omit only supports objects');
+  const result: Partial<T> = { ...obj };
+  keys.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      delete result[key];
+    }
+  });
+  return result as Omit<T, K>;
 }
 /**@example isEqualDeep({a: {b: 1}}, {a: {b: 1}}) // true */
 export function isEqualDeep(
@@ -147,3 +163,42 @@ export function groupBy(arr: any[], by: any) {
   return result;
 }
 //#endregion lodash
+//#region onion
+export type Middle<T extends {}> = (
+  ctx: T,
+  next: () => MaybePromise<unknown>,
+) => unknown;
+export class Onion<T extends {}> {
+  middles;
+  constructor(middles: Middle<T>[] = []) {
+    this.middles = [...middles];
+  }
+  use(middle: Middle<T>) {
+    this.middles.push(middle);
+    return this;
+  }
+  run(ctx: T, index = 0) {
+    if (index === this.middles.length) return;
+    const next = () => this.run(ctx, index + 1);
+    return this.middles[index](ctx, next);
+  }
+}
+//#region other
+export function env<K extends keyof NodeJS.ProcessEnv>(
+  key: K,
+  defaultValue?: NodeJS.ProcessEnv[K],
+) {
+  const value = process.env[key] ?? defaultValue;
+  if (value === void 0) throw `Environment variable not found: ${key}`;
+  return value;
+}
+export function toRule(schame: z.ZodType) {
+  return async function (v: unknown) {
+    const { success, error: err } = await schame.spa(v);
+    // success || error('field validation failed', err.format()._errors);
+    return success || err.format()._errors.join('\n');
+  };
+}
+export function toFieldRules<T extends z.ZodRawShape>(schame: z.ZodObject<T>) {
+  return mapValues(schame.shape, (v) => [toRule(v)] as const);
+}

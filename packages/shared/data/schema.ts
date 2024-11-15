@@ -1,5 +1,5 @@
-import { extendZod } from '@zodyac/zod-mongoose';
-import { z } from 'zod';
+import { z } from 'zod'; /**@see https://zod.dev/ */
+import { mapValues } from '..';
 import {
   BizCode,
   CardType,
@@ -10,16 +10,14 @@ import {
   RecruitmentType,
   RptProjectType,
   RptUserType,
+  type EnumMeta,
 } from './enum';
-import { mapValues } from '..';
 
-extendZod(z);
-
-function enums<const T extends number>(d: { _enums: T[] }, isStr?: true) {
+function enums<const T extends number>(d: EnumMeta<T[]>, isStr?: true) {
   type Enum = UnionToTuple<T extends number ? z.ZodLiteral<T> : never>;
   //@ts-ignore
   return z.union<Enum>(
-    d._enums.flatMap((v) =>
+    d.enums.flatMap((v) =>
       isStr ? [z.literal(v), z.literal('' + v)] : z.literal(v),
     ),
   );
@@ -62,18 +60,18 @@ export const shared = (function () {
     content: max100Str,
     /**创建时间 */
     t: timestamp,
-    has_read: z.boolean(),
+    read: z.boolean(),
   });
   const position = z.object({
     detail: z.string().max(30),
   });
   const token = z.object({
-    access: max100Str,
-    refresh: max100Str,
+    access: z.string(),
+    refresh: z.string(),
   });
   //@ts-ignore
-  const output = <T extends z.ZodType = z.ZodAny>(data?: T = z.any()) =>
-    z.object({ code: enums(BizCode), msg: max20Str, data });
+  const output = <T extends z.ZodType = z.ZodAny>(data: T = z.any()) =>
+    z.object({ code: enums(BizCode), msg: z.string(), data });
   return { timestamp, duration, message, position, token, output };
 })();
 export const project = (function () {
@@ -157,17 +155,13 @@ export const filter = (function () {
   return { range, data };
 })();
 export const user = (function () {
-  const _public = param.uid.extend({
-    name: max20Str,
-    face:
-      z.string().url() &&
-      z.string().startsWith('https://picsum.photos/1?t=').max(30),
-    gender: enums(Gender),
-    birthday: shared.timestamp,
-  });
   const editable = z.object({
     name: max20Str,
     face: z.string().url(),
+  });
+  const _public = param.uid.merge(editable).extend({
+    gender: enums(Gender),
+    birthday: shared.timestamp,
   });
   const own = _public.extend({
     phone: z.string().length(11, '手机号长度为 11 位'),
@@ -178,13 +172,20 @@ export const user = (function () {
       /**认证邮箱 */
       recruiter: z.string().email().optional(),
     }),
+    pwd: z.boolean(),
+  });
+  const model = own.extend({
+    pwd: z
+      .string()
+      .regex(/^\w{6,16}$/, '密码长度为 6-16 位，只能包含字母、数字或下划线'),
+    created_time: shared.timestamp,
   });
   const auth = z.object({
     name: max20Str,
     type: enums(CardType),
     num: z.string().max(30),
   });
-  return { public: _public, editable, own, auth };
+  return { public: _public, editable, own, model, auth };
 })();
 /**举报 */
 export const report = (function () {

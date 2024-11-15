@@ -24,9 +24,6 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@trpc/client": "^10.45.2",
-    "@trpc/server": "^10.45.2",
-    "@zodyac/zod-mongoose": "^2.3.3",
     "zod": "^3.23.8"
   },
   "lint-staged": {
@@ -40,5 +37,14 @@
     "package.json": [
       "prettier --write"
     ]
+  },
+  "prettier": {
+    "printWidth": 80,
+    "bracketSpacing": true,
+    "arrowParens": "always",
+    "endOfLine": "lf",
+    "singleQuote": true,
+    "trailingComma": "all",
+    "semi": true
   }
 }

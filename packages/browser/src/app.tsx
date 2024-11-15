@@ -93,7 +93,7 @@ function useNavTabs() {
         path,
         badge:
           meta.nav.tip === '消息'
-            ? messages.value.filter((e) => !e.has_read).length
+            ? messages.value.filter((e) => !e.read).length
             : 0,
         ...meta.nav,
       })),

@@ -12,44 +12,46 @@ import {
   mdiLockOutline,
 } from '@mdi/js';
 
-type ItemConfig<K extends string = string, V extends {} = {}> = [K, V];
-type ItemAddtional<K extends string = string, I extends number = number> = {
-  /**成员名 */ _name: K;
-  /**成员值 */ _value: I;
+type ItemData = Partial<ItemMeta<typeof unique, typeof unique>> &
+  Record<string, unknown>;
+type ItemKD<K extends string = string, D extends ItemData = ItemData> = [K, D];
+type ItemMeta<K = string, V = number> = {
+  /**成员名 */ name: K;
+  /**成员值 */ value: V;
 };
-type EnumAddtional<
+export type EnumMeta<
   V extends number[] = number[],
-  C extends ItemConfig[1][] = ItemConfig[1][],
+  D extends Merge<ItemData, ItemMeta>[] = Merge<ItemData, ItemMeta>[],
 > = {
-  /**所有成员枚举 */ _enums: V;
-  /**所有成员 */ _items: C;
+  /**所有成员枚举 */ enums: V;
+  /**所有成员 */ items: D;
 };
 /**推断枚举值 */
-export type Enum<T extends EnumAddtional> = T['_enums'][number];
+export type Enum<T extends EnumMeta> = T['enums'][number];
 /**构建枚举对象 */
-export function toEnum<const T extends ItemConfig[]>(config: T) {
+export function toEnum<const T extends ItemKD[]>(config: T) {
   type EnumValue = IntToTuple<T['length']>;
   //@ts-ignore
   type EnumIndex = EnumValue[number];
   type EnumObject<I = EnumIndex> = UnionToIntersection<
     I extends number
-      ? T[I] extends ItemConfig<infer K, infer V>
-        ? { readonly [P in I | K]: V & ItemAddtional<K, I> }
+      ? T[I] extends ItemKD<infer K, infer V>
+        ? { readonly [P in I | K]: V & ItemMeta<K, I> }
         : never
       : never
   >;
-  return config.reduce(
+  return config.reduce<EnumMeta>(
     (acc, [k, v], i) => {
-      Object.assign(v, { _name: k, _value: i } satisfies ItemAddtional);
+      Object.assign(v, { name: k, value: i } satisfies ItemMeta);
       Object.assign(acc, { [k]: v, [i]: v });
-      acc._enums.push(i);
-      acc._items.push(v);
+      acc.enums.push(i);
+      acc.items.push(v);
       return acc;
     },
-    { _enums: [], _items: [] } as EnumAddtional,
+    { enums: [], items: [] },
   ) as EnumObject &
     //@ts-ignore
-    EnumAddtional<EnumValue, UnionToTuple<EnumObject[EnumIndex]>>;
+    EnumMeta<EnumValue, UnionToTuple<EnumObject[EnumIndex]>>;
 }
 
 /**业务码 */

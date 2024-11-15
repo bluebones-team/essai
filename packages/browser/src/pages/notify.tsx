@@ -12,7 +12,7 @@ import { VToolbar, VToolbarTitle } from 'vuetify/components/VToolbar';
 import { VScrollYReverseTransition } from 'vuetify/components/transitions';
 import { Dialog } from '~/components/dialog';
 import { List } from '~/components/list';
-import { client } from '~/ts//client';
+import { c } from '~/ts//client';
 import { dateFormat } from '~/ts/date';
 import { usePopup } from '~/ts/hook';
 import { messages, setting } from '~/ts/state';
@@ -40,9 +40,9 @@ const _Nav = defineComponent(() => {
       value: totalEnum,
       prependIcon: mdiEmailMultipleOutline,
     },
-    ...map(groupBy(MessageType._items, 'group'), (items, name) => [
+    ...map(groupBy(MessageType.items, 'group'), (items, name) => [
       { type: 'subheader', name },
-      ...items.map(({ title, _value, icon }) => ({
+      ...items.map(({ title, value: _value, icon }) => ({
         title,
         value: _value,
         prependIcon: icon,
@@ -99,7 +99,7 @@ const _MsgList = defineComponent(() => {
             appendText: item.time,
             prependIcon: MessageType[item.type].icon,
             border: true,
-            variant: item.has_read ? 'plain' : 'tonal',
+            variant: item.read ? 'plain' : 'tonal',
           } satisfies Props<typeof Item>,
         })),
       ],
@@ -125,12 +125,15 @@ const _Detail = defineComponent(() => {
     if (typeof timer === 'number') window.clearTimeout(timer);
     timer = window.setTimeout(() => {
       if (mobile.value && !detail_dialog.isShow.value) return;
-      new client('notify/read', { uid: msg.uid, mid: msg.mid }).send({
-        0() {
-          msg.has_read = true;
-          timer = null;
+      c['notify/read'].send(
+        { uid: msg.uid, mid: msg.mid },
+        {
+          0() {
+            msg.read = true;
+            timer = null;
+          },
         },
-      });
+      );
     }, setting.notify.readDelay * 1e3);
   });
   return () =>
@@ -154,7 +157,7 @@ watchEffect(() => {
   if (state.message) detail_dialog.show();
 });
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '消息',

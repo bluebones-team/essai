@@ -1,8 +1,14 @@
 import { mdiArrowLeft } from '@mdi/js';
-import { ProjectType, RecruitmentType } from 'shared/data';
-import { useValidator } from 'shared';
-import { project } from 'shared/data';
-import { computed, defineComponent, inject, reactive, useModel } from 'vue';
+import { toFieldRules } from 'shared';
+import { project, ProjectType, RecruitmentType } from 'shared/data';
+import {
+  computed,
+  defineComponent,
+  inject,
+  reactive,
+  useAttrs,
+  useModel,
+} from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VSpacer } from 'vuetify/components/VGrid';
@@ -15,42 +21,14 @@ import { VDateInput } from 'vuetify/labs/VDateInput';
 import { Container, type ContainerDisplay } from '~/components/container';
 import { Form } from '~/components/form';
 import { Section } from '~/components/section';
-import { useDefaults } from '~/ts/hook';
 import { injection } from '~/ts/state';
-import { toComputed } from '~/ts/util';
+import { checkModel, toComputed } from '~/ts/util';
 
-const projectValid = useValidator(project.public.data);
-const contentValid = useValidator(project.recruitment.shape.contents.element);
-const recruitmentValid = useValidator(project.recruitment);
-const positionValid = useValidator(project.public.data.shape.position);
+const projectValid = toFieldRules(project.public.data);
+const contentValid = toFieldRules(project.recruitment.shape.contents.element);
+const recruitmentValid = toFieldRules(project.recruitment);
+const positionValid = toFieldRules(project.public.data.shape.position);
 
-const FormSection = defineComponent(function (
-  p: {
-    title: string;
-    subtitle?: string;
-    display: ContainerDisplay;
-  } & {
-    modelValue?: boolean;
-    'onUpdate:modelValue'?: (value: boolean) => void;
-  },
-) {
-  const model = useModel(p, 'modelValue');
-  return () => (
-    <Section
-      title={p.title}
-      items={[
-        {
-          title: p.subtitle,
-          comp: () => (
-            <Form v-model={model.value}>
-              <Container display={p.display} />
-            </Form>
-          ),
-        },
-      ]}
-    ></Section>
-  );
-});
 function useBaseDisplay(data: Project['Data']): ContainerDisplay {
   const { xs } = useDisplay();
   return [
@@ -72,10 +50,10 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
           <VSelect
             v-model={data.type}
             label="类型"
-            items={ProjectType._items.map((e) => ({
-              title: e._name,
+            items={ProjectType.items.map((e) => ({
+              title: e.name,
               subtitle: e.title,
-              value: e._value,
+              value: e.value,
             }))}
             itemProps
             rules={projectValid.type}
@@ -246,8 +224,31 @@ function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
   ];
 }
 
+const FormSection = defineComponent(function (p: {
+  title: string;
+  subtitle?: string;
+  display: ContainerDisplay;
+}) {
+  /**@see https://cn.vuejs.org/guide/components/attrs.html */
+  const attrs = useAttrs();
+  return () => (
+    <Section
+      title={p.title}
+      items={[
+        {
+          title: p.subtitle,
+          comp: () => (
+            <Form {...attrs}>
+              <Container display={p.display} />
+            </Form>
+          ),
+        },
+      ]}
+    ></Section>
+  );
+});
 export const ProjectInfo = defineComponent(function (
-  _p: {
+  p: {
     actions?: Props<VBtn>[];
     onBack?(): void;
     onSave?(data: Project['Data']): void;
@@ -261,14 +262,10 @@ export const ProjectInfo = defineComponent(function (
   },
 ) {
   const { mobile } = useDisplay();
-  const p = useDefaults(_p, {
-    modelValue: () => ({}) as Project['Data'],
-    isPasses: () => [],
-  });
-  const model = useModel(p, 'modelValue');
+  const model = useModel(checkModel(p), 'modelValue');
   const state = reactive({
-    model,
-    isPass: useModel(p, 'isPasses'),
+    // model,
+    isPass: useModel(p, 'isPasses', { get: (v) => v ?? [] }),
     panels: computed(() => [
       { title: '基本', display: useBaseDisplay(model.value) },
       {
@@ -294,7 +291,7 @@ export const ProjectInfo = defineComponent(function (
         {p.modelValue ? (
           <VScrollYReverseTransition group hideOnLeave>
             {state.panels.map((e, i) => (
-              <FormSection v-model={state.isPass[i]} key={e.title} {...e} />
+              <FormSection v-model={state.isPass![i]} key={e.title} {...e} />
             ))}
           </VScrollYReverseTransition>
         ) : (

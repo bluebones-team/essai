@@ -1,28 +1,13 @@
-/**深层Partial */
-type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends {} ? DeepPartial<T[K]> : T[K];
-};
-/**深层Omit */
-type DeepOmit<T, U> = T extends U
-  ? Omit<T, keyof U> & Record<keyof U, Omit<T[keyof U], keyof U[keyof U]>>
-  : T;
-/**把部分键设为Required */
-type RequiredKeys<T, K extends keyof T> = Required<Pick<T, K>> & Omit<T, K>;
-/**选取特定类型值的属性 */
-type PickByValue<T, U> = {
-  [K in keyof T]: T[K] extends U ? T[K] : never;
-};
 type BooleanKey<T, K extends keyof T = keyof T> = K extends any
   ? [T[K]] extends [boolean | undefined]
     ? K
     : never
   : never;
-
-/**getter或value */
 type MaybeGetter<T> = (() => T) | T;
-type Diff<T extends {}, U extends {}> = T extends U
-  ? { [K in keyof (T & U) as Exclude<K, keyof (T | U)>]: (T & U)[K] }
-  : never;
+type MaybePromise<T> = T | Promise<T>;
+//@ts-ignore
+const unique: unique symbol = Symbol();
+type Unique = typeof unique;
 
 //#region string
 /**字符串分割 */
@@ -34,17 +19,28 @@ type Split<
 //#endregion string
 
 //#region object
-/**合并对象 */
 type Merge<T, U> = {
   //@ts-ignore
   [K in keyof T | keyof U]: K extends keyof U ? U[K] : T[K];
 };
-/**合并对象元组 */
 type MergeTuple<T extends any[], S = {}> = T extends []
   ? S
   : T extends [infer L, ...infer R]
     ? MergeTuple<R, Merge<S, L>>
     : never;
+type Diff<T extends {}, U extends {}> = T extends U
+  ? { [K in keyof (T & U) as Exclude<K, keyof (T | U)>]: (T & U)[K] }
+  : never;
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends {} ? DeepPartial<T[K]> : T[K];
+};
+type DeepOmit<T, U> = T extends U
+  ? Omit<T, keyof U> & Record<keyof U, Omit<T[keyof U], keyof U[keyof U]>>
+  : T;
+type RequiredByKey<T, K extends keyof T> = Required<Pick<T, K>> & Omit<T, K>;
+type PartialByKey<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>;
+type PickByValue<T, U> = { [K in keyof T]: T[K] extends U ? T[K] : never };
+type NonReadonly<T> = { -readonly [P in keyof T]: T[P] };
 //#endregion object
 
 //#region function
@@ -53,7 +49,7 @@ type Eq<T, U> =
     ? true
     : false;
 type Not<T> = T extends true ? false : true;
-type If<T, U, V = T> = Eq<T, true> extends true ? U : V;
+type If<C, T, F = C> = Eq<C, true> extends true ? T : F;
 type Branded<T, U> = T & { readonly __brand: U };
 //#endregion function
 

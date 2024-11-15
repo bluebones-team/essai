@@ -1,31 +1,63 @@
-import type { CreateHTTPContextOptions } from '@trpc/server/adapters/standalone';
+import Router from 'koa-router';
+import type { Model } from 'mongoose';
+import { each } from 'shared';
 import { BizCode } from 'shared/data';
-import { createKoaMiddleware } from 'trpc-koa-adapter';
-import { t, toRouter } from './api';
-// import apiRouter from './implement';
+import { apiConfig, zodCheck, type Path } from 'shared/router';
+import { zocker } from 'zocker';
+import { model } from '~/client';
+import { tokenMgr } from '~/service';
+import { routes } from './api';
+import { o } from './util';
+import { a_json } from 'shared/middle';
 
-const apiRouter = toRouter({});
-export const appRouter = t.mergeRouters(
-  apiRouter,
-  t.router({ test: t.procedure.query(() => 'hello world') }), // test
-);
-function createContext(e: CreateHTTPContextOptions) {
-  return e;
-}
-export const routes = createKoaMiddleware({ router: appRouter, createContext });
-export const output = {
-  /**提供类型检查 */
-  data(output: Shared.Output) {
-    return output;
-  },
-  succ<T>(data: T) {
-    return { code: BizCode.Success._value, msg: '', data };
-  },
-  fail(msg: string) {
-    return { code: BizCode.Fail._value, msg, data: null as any };
-  },
+type ExtendContext = {
+  user: Awaited<
+    ReturnType<
+      typeof model.user.add<
+        typeof model.user extends Model<any, {}, infer M> ? M : never
+      >
+    >
+  >;
+};
+type Middleware = Router.IMiddleware<any, ExtendContext>;
+export type Context = Parameters<Middleware>[0];
+const auth: Middleware = (ctx, next) => {
+  const token = ctx.req.headers.authorization;
+  if (!token)
+    return o({ code: BizCode.Unauthorizen.value, msg: 'token not found' });
+  return tokenMgr.verify(token).then(
+    async (payload) => {
+      const user = await model.user.findOne(payload);
+      if (!user) return o('fail', '用户不存在');
+      ctx.user = user;
+      return next();
+    },
+    () => o({ code: BizCode.Unauthorizen.value, msg: 'token invalid' }),
+  );
 };
 
-export type Middleware = Parameters<typeof t.procedure.use>[0];
-export type Context = ReturnType<typeof createContext>;
-export type ApiRouter = typeof apiRouter;
+/**@see https://github.com/ZijianHe/koa-router */
+export const router = new Router<any, ExtendContext>()
+  .use(async (ctx, next) => {
+    ctx.body = a_json.convert(await next());
+  })
+  .get('/', (ctx) => 'haha world')
+  .use(
+    zodCheck({
+      key: 'input',
+      getSchema: (ctx) => apiConfig[ctx.path.slice(1) as Path].in,
+      onError: (ctx, reason) => o('fail', JSON.stringify(reason)),
+    }),
+  );
+each(apiConfig, (api, path) => {
+  const { meta } = api;
+  const type = meta.type;
+  if (type === 'ws') return;
+  const mock = () =>
+    Object.assign(o('succ', zocker(api.out.shape.data).generate()), {
+      __mock: 1,
+    });
+  const middles: Middleware[] = [routes[path as Path] ?? mock];
+  if (meta.token) middles.unshift(auth);
+  router[type](`/${path}`, ...middles);
+});

@@ -2,7 +2,7 @@ import { mdiEyeOffOutline, mdiEyeOutline } from '@mdi/js';
 import { account } from 'shared/router';
 import { progress, type Input } from 'shared/router';
 import { CardType } from 'shared/data';
-import { useValidator } from 'shared';
+import { toFieldRules } from 'shared';
 import { user } from 'shared/data';
 import { defineComponent, reactive, ref, shallowRef } from 'vue';
 import { VMain } from 'vuetify/components/VMain';
@@ -13,7 +13,7 @@ import { Container } from '~/components/container';
 import { DialogForm } from '~/components/dialog-form';
 import { Form } from '~/components/form';
 import { OtpInput } from '~/components/forms/otp-input';
-import { client } from '~/ts/client';
+import { c } from '~/ts/client';
 import { usePopup } from '~/ts/hook';
 import { snackbar, storage, udata } from '~/ts/state';
 import { error } from '~/ts/util';
@@ -21,8 +21,8 @@ import { error } from '~/ts/util';
 const PwdInput = defineComponent(() => {
   const loading = ref(false);
   const showPwd = ref(false);
-  const pwd_data = reactive<Input['login']>({ phone: '', pwd: '' });
-  const pwd_validator = useValidator(account.login.req);
+  const pwd_data = reactive<Input['login/pwd']>({ phone: '', pwd: '' });
+  const pwd_validator = toFieldRules(account['login/pwd'].in);
   return () => (
     <Form
       size="small"
@@ -36,7 +36,7 @@ const PwdInput = defineComponent(() => {
         },
       ]}
       onPass={() => {
-        new client('login', pwd_data).use(progress(loading, 'value')).send({
+        c['login/pwd'].use(progress(loading, 'value')).send(pwd_data, {
           0(res) {
             storage.setToken(res.data);
             udata.value = res.data;
@@ -89,11 +89,11 @@ const PwdInput = defineComponent(() => {
 const _OtpInput = () => <OtpInput onPass:code={() => realname_dialog.show()} />;
 const RealnameInput = defineComponent(() => {
   const realname_data = reactive<User.Auth>({
-    type: CardType.IDCard._value,
+    type: CardType.IDCard.value,
     name: '',
     num: '',
   });
-  const realname_validator = useValidator(user.auth);
+  const realname_validator = toFieldRules(user.auth);
   return () => (
     <Container
       display={[
@@ -114,7 +114,7 @@ const RealnameInput = defineComponent(() => {
                 v-model={realname_data.type}
                 label="证件类型"
                 rules={realname_validator.type}
-                items={CardType._items}
+                items={CardType.items}
               />
             ),
           },
@@ -139,7 +139,7 @@ const realname_dialog = usePopup(DialogForm, () => ({
   onPass: () => error('提交实名认证'),
 }));
 
-export const route: SupplyRoute = {};
+export const route: LooseRouteRecord = {};
 export default defineComponent({
   name: 'Login',
   //@ts-ignore

@@ -10,7 +10,7 @@ import { DialogForm } from '~/components/dialog-form';
 import { AdvancedFilter, SimpleFilter } from '~/components/proj-filter';
 import { ProjectInfo } from '~/components/proj-info';
 import { Table, type TableHeader } from '~/components/table';
-import { client } from '~/ts//client';
+import { c } from '~/ts//client';
 import { usePopup, useProjData } from '~/ts/hook';
 import { injection, snackbar } from '~/ts/state';
 
@@ -33,7 +33,7 @@ const _Table = defineComponent(() => {
       // width: '6rem',
       value: (item) => (
         <VChip key={item.type} color={ProjectType[item.type].color}>
-          {ProjectType[item.type]._name}
+          {ProjectType[item.type].name}
         </VChip>
       ),
       //@ts-ignore
@@ -44,7 +44,7 @@ const _Table = defineComponent(() => {
       key: `recruitments[${filter.data.rtype}].fee` as any,
       minWidth: '6rem',
       value: (item) => {
-        filter.data.rtype ??= RecruitmentType.Subject._value;
+        filter.data.rtype ??= RecruitmentType.Subject.value;
         return (
           <p key={item.recruitments[filter.data.rtype]?.fee}>
             {item.recruitments[filter.data.rtype]
@@ -106,11 +106,14 @@ const _Join = defineComponent(() => {
     if (data.recruitments[rtype]?.should_select_event) {
       snackbar.show({ text: '暂不支持该功能', color: 'info' });
     } else {
-      new client('proj/join', { pid: data.pid, rtype, starts }).send({
-        0(res) {
-          snackbar.show({ text: '报名成功', color: 'success' });
+      c['proj/join'].send(
+        { pid: data.pid, rtype, starts },
+        {
+          0(res) {
+            snackbar.show({ text: '报名成功', color: 'success' });
+          },
         },
-      });
+      );
     }
   }
   return () => (
@@ -169,7 +172,7 @@ watchEffect(() => {
   if (proj.data) detail_dialog.show();
 });
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '报名',
@@ -178,7 +181,7 @@ export const route: SupplyRoute = {
     },
     need: {
       login: false,
-      role: Role.Participant._value,
+      role: Role.Participant.value,
     },
   },
 };

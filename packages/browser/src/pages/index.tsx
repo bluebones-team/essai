@@ -35,7 +35,7 @@ const Link = (props, { slots }) => (
   </a>
 );
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '主页',

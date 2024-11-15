@@ -1,7 +1,6 @@
 import { mdiInformationOutline } from '@mdi/js';
 import {
   defineComponent,
-  useModel,
   withDirectives,
   type SetupContext,
   type SlotsType,
@@ -15,6 +14,7 @@ import { VDataTableVirtual } from 'vuetify/components/VDataTable';
 import { VItem, VItemGroup } from 'vuetify/components/VItemGroup';
 import { VToolbar } from 'vuetify/components/VToolbar';
 import { Ripple } from 'vuetify/directives';
+import { pickModel } from '~/ts/util';
 
 export type TableHeader<T> = {
   title: string;
@@ -50,7 +50,6 @@ export const Table = defineComponent(function <
   },
   { slots }: Omit<SetupContext<[], SlotsType<TableSlots>>, 'expose'>,
 ) {
-  const model = useModel(p, 'modelValue');
   const itemSlots: (item: T) => Slots<VItem> = (item) => ({
     default: ({ isSelected, toggle }) => [
       withDirectives(
@@ -102,7 +101,7 @@ export const Table = defineComponent(function <
     ],
   };
   return () => (
-    <VItemGroup v-model={model.value} multiple={p.multiple}>
+    <VItemGroup {...pickModel(p)} multiple={p.multiple}>
       {/* @ts-ignore */}
       <VDataTableVirtual
         {...{

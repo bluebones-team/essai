@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["./**/*"],
+  "include": ["./**/*", "../shared/middle", "../shared/middle/index.ts"],
   "compilerOptions": {
     "paths": {
       "~/*": ["./src/*"]

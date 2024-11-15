@@ -4,7 +4,7 @@ import { VSlider } from 'vuetify/components/VSlider';
 import { SectionGroup } from '~/components/section-group';
 import { setting } from '~/ts/state';
 
-export const route: SupplyRoute = {
+export const route: LooseRouteRecord = {
   meta: {
     nav: {
       tip: '消息',

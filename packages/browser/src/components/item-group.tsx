@@ -1,5 +1,6 @@
-import { defineComponent, useModel } from 'vue';
+import { defineComponent } from 'vue';
 import { VItem, VItemGroup } from 'vuetify/components/VItemGroup';
+import { pickModel } from '~/ts/util';
 
 export const ItemGroup = defineComponent(function <T, U extends boolean>(
   p: {
@@ -11,13 +12,8 @@ export const ItemGroup = defineComponent(function <T, U extends boolean>(
     'onUpdate:modelValue'?: (v: T) => void;
   },
 ) {
-  const model = useModel(p, 'modelValue');
   return () => (
-    <VItemGroup
-      v-model={model.value}
-      mandatory={p.mandatory}
-      multiple={p.multiple}
-    >
+    <VItemGroup {...pickModel(p)} mandatory={p.mandatory} multiple={p.multiple}>
       {p.items.map(({ value, comp }) => (
         <VItem key={value + ''} value={value} v-slots={{ default: comp }} />
       ))}

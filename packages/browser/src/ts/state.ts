@@ -1,8 +1,8 @@
 import { each, pick } from 'shared';
 import { Role, Theme } from 'shared/data';
 import { reactive, ref, type InjectionKey } from 'vue';
-import { VSnackbar } from 'vuetify/components/VSnackbar';
-import { client } from './client';
+import { SnackbarQueue } from '~/components/snackbar';
+import { c } from './client';
 import { usePopup } from './hook';
 import { error } from './util';
 
@@ -15,9 +15,9 @@ export const setting = reactive({
   /**显示 */
   display: {
     /**主题 */
-    theme: Theme.System._value as Theme,
+    theme: Theme.System.value as Theme,
     /**角色 */
-    role: Role.Participant._value as Role,
+    role: Role.Participant.value as Role,
   },
   /**消息通知 */
   notify: {
@@ -44,17 +44,20 @@ export const messages = ref<Shared.Message[]>([]);
 
 // 初始化
 setTimeout(() => {
-  new client('login/token', null).send({
+  c['login/token'].send(void 0, {
     0(res) {
       udata.value = res.data;
     },
   });
-  new client('notify/list', { pn: 1, ps: 20 }).send({
-    0(res) {
-      messages.value = res.data;
+  c['notify/list'].send(
+    { pn: 1, ps: 20 },
+    {
+      0(res) {
+        messages.value = res.data;
+      },
     },
-  });
-  new client('notify/stream', null).send({
+  );
+  c['notify/stream'].send(void 0, {
     0(res) {
       messages.value.push(res.data);
     },
@@ -62,59 +65,45 @@ setTimeout(() => {
 });
 
 /**LocalStorage */
-export const storage = (function () {
-  /**LocalStroage 数据 */
-  type D = Shared.Token & { theme: Theme; role: Role };
-  return {
-    get<K extends keyof D>(key: K) {
-      return localStorage.getItem(key) as D[K];
-    },
-    set<K extends keyof D>(key: K, value: D[K]) {
-      const convert = () => value + '';
-      const handleError = () => (error('LocalStorage data error'), '');
-      localStorage.setItem(
-        key,
-        //@ts-ignore
-        {
-          object: () => JSON.stringify(value),
-          boolean: convert,
-          bigint: convert,
-          number: convert,
-          string: () => value,
-          symbol: handleError,
-          function: handleError,
-          undefined: handleError,
-        }[typeof value](),
-      );
-    },
-    remove<K extends keyof D>(key: K) {
-      localStorage.removeItem(key);
-    },
-    setToken(obj: Shared.Token) {
-      each(pick(obj, ['access', 'refresh']), (v, k) =>
-        this.set(k as keyof D, v),
-      );
-    },
-    removeToken() {
-      this.remove('access');
-      this.remove('refresh');
-    },
-  };
-})();
+export const storage = {
+  get<K extends keyof LocalStorage>(key: K) {
+    return localStorage.getItem(key) as LocalStorage[K];
+  },
+  set<K extends keyof LocalStorage>(key: K, value: LocalStorage[K]) {
+    const convert = () => value + '';
+    const handleError = () => (error('LocalStorage data error'), '');
+    localStorage.setItem(
+      key,
+      //@ts-ignore
+      {
+        object: () => JSON.stringify(value),
+        boolean: convert,
+        bigint: convert,
+        number: convert,
+        string: () => value,
+        symbol: handleError,
+        function: handleError,
+        undefined: handleError,
+      }[typeof value](),
+    );
+  },
+  remove<K extends keyof LocalStorage>(key: K) {
+    localStorage.removeItem(key);
+  },
+  setToken(obj: Shared.Token) {
+    each(pick(obj, ['access', 'refresh']), (v, k) =>
+      this.set(k as keyof LocalStorage, v),
+    );
+  },
+  removeToken() {
+    this.remove('access');
+    this.remove('refresh');
+  },
+};
 
 // popup
-export const snackbar = usePopup(
-  VSnackbar,
-  () =>
-    ({
-      text: 'Hello Brain',
-      color: 'primary',
-      timeout: 2e3,
-      timer: '#fff8',
-      location: 'top',
-      key: Date.now(),
-    }) as const,
-);
+export const snackbar = usePopup(SnackbarQueue);
+if (import.meta.env.DEV) Object.assign(window, { snackbar });
 
 export const injection = {
   editable: Symbol('editable') as InjectionKey<MaybeGetter<boolean>>,
