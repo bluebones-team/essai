@@ -7,24 +7,34 @@ const wsHost = getApiURL(import.meta.env.DEV, 'ws');
 //@ts-ignore
 export const c = createClient({
   send(ctx) {
-    const { meta } = ctx;
-    if (meta.type === 'ws') return;
-    fetch(`${host}/${ctx.path}`, {
+    const { meta } = ctx.api;
+    if (meta.type === 'ws') {
+      const ws = new WebSocket(`${wsHost}${ctx.path}`);
+      ws.addEventListener('open', (event) => {
+        ws.send(ctx.input as string);
+      });
+      ws.addEventListener('message', (event) => {
+        ctx.onData(event.data);
+      });
+      ws.addEventListener('error', (event) => {
+        ctx.onError(event);
+      });
+      return;
+    }
+    fetch(`${host}${ctx.path}`, {
       method: meta.type,
       headers: {
         Authorization: meta.token && storage.get(meta.token),
         // 'Content-Type': 'application/json',
       },
-      body: ctx.data as string,
+      body: ctx.input as string,
       signal: ctx.signal,
     })
-      .then((r) => r.json())
+      .then((res) => res.text())
+      //@ts-ignore
       .then(ctx.onData, ctx.onError);
   },
   error,
-  token: {
-    get: (k) => storage.get(k),
-    set: (d) => storage.setToken(d),
-  },
+  setToken: (d) => storage.setToken(d),
 });
 if (import.meta.env.DEV) Object.assign(window, { c });

@@ -6,7 +6,7 @@ import { defineComponent } from 'vue';
 
 const text = ref('确定退订邮件通知吗？');
 function unsubscribe() {
-  c['usr/email/unsubscribe'].send(void 0, {
+  c['/usr/email/unsubscribe'].send(void 0, {
     0() {
       text.value = '退订成功';
     },

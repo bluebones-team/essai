@@ -2,7 +2,7 @@ import type { Middleware } from 'koa';
 import pinoLogger from 'koa-pino-logger';
 import type { PrettyOptions } from 'pino-pretty';
 import { env, pick } from 'shared';
-import { b_json } from 'shared/middle';
+import { a_json, b_json } from 'shared/middle';
 
 /**@see https://github.com/pinojs/pino/blob/main/docs/api.md#options */
 export const log = pinoLogger({
@@ -22,7 +22,7 @@ export const log = pinoLogger({
         /**@see https://github.com/pinojs/pino-pretty */
         options: {
           translateTime: 'SYS:standard',
-          messageFormat: ['{req.url}', '{msg}'].join(' - '),
+          messageFormat: ['{req.method} {req.url}', '{msg}'].join(' - '),
           singleLine: true,
           // hideObject: true,
         } satisfies PrettyOptions,
@@ -49,10 +49,11 @@ export const log = pinoLogger({
 
 declare module 'koa' {
   interface ExtendableContext {
-    input: any;
+    input: unknown;
+    output: unknown;
   }
 }
-export const body = (): Middleware => {
+export const convert = (): Middleware => {
   return async (ctx, next) => {
     const text = await new Promise<string>((resolve) => {
       let data = '';
@@ -61,12 +62,13 @@ export const body = (): Middleware => {
         .on('end', () => resolve(data));
     });
     ctx.input = b_json.convert(text);
-    return next();
+    await next();
+    ctx.body = a_json.convert(ctx.output);
   };
 };
 
 /**@see https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CORS */
-export const cors = (): Middleware => async (ctx, next) => {
+export const cors = (): Middleware => (ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*');
   ctx.set('Access-Control-Allow-Credentials', 'true');
   ctx.set('Content-Type', 'application/json;charset=utf-8');
@@ -77,7 +79,7 @@ export const cors = (): Middleware => async (ctx, next) => {
     ctx.status = 204;
     return;
   }
-  await next();
+  return next();
 };
 
 export const catcher: Middleware = (ctx, next) =>

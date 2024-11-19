@@ -29,11 +29,11 @@ import { usePopup } from '~/ts/hook';
 import { storage, udata } from '~/ts/state';
 import { error } from '~/ts/util';
 
-const rules = toFieldRules(usr['usr/edit'].in);
+const rules = toFieldRules(usr['/usr/edit'].in);
 /**编辑框 */
-function editInput(data: Input['usr/edit']) {
+function editInput(data: Input['/usr/edit']) {
   const { promise, resolve } = Promise.withResolvers<string[]>();
-  // c['usr/face/list'].send(void 0,{
+  // c['/usr/face/list'].send(void 0,{
   //   0: (res) => resolve(res.data),
   // });
   const display: ContainerDisplay = [
@@ -71,7 +71,7 @@ function editBtn() {
     content: editInput(data),
     submitText: '更新',
     onPass() {
-      c['usr/edit'].use(progress(loading, 'value')).send(data);
+      c['/usr/edit'].with(progress(loading, 'value')).send(data);
     },
   }));
   return () => (
@@ -98,7 +98,7 @@ function deleteUserBtn() {
         color: 'error',
         loading: loading.value,
         onClick() {
-          c['logout'].use(progress(loading, 'value')).send(void 0, {
+          c['/logout'].with(progress(loading, 'value')).send(void 0, {
             0() {
               udata.value = void 0;
               storage.removeToken();
@@ -121,7 +121,7 @@ function logoutBtn() {
         color: 'error',
         loading: loading.value,
         onClick() {
-          c['logout'].use(progress(loading, 'value')).send(void 0, {
+          c['/logout'].with(progress(loading, 'value')).send(void 0, {
             0() {
               udata.value = void 0;
               storage.removeToken();

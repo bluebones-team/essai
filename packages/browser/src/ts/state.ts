@@ -44,12 +44,12 @@ export const messages = ref<Shared.Message[]>([]);
 
 // 初始化
 setTimeout(() => {
-  c['login/token'].send(void 0, {
+  c['/login/token'].send(void 0, {
     0(res) {
       udata.value = res.data;
     },
   });
-  c['notify/list'].send(
+  c['/notify/list'].send(
     { pn: 1, ps: 20 },
     {
       0(res) {
@@ -57,7 +57,7 @@ setTimeout(() => {
       },
     },
   );
-  c['notify/stream'].send(void 0, {
+  c['/notify/stream'].send(void 0, {
     0(res) {
       messages.value.push(res.data);
     },

@@ -8,7 +8,7 @@ defineComponent(() => {
   return {
     state,
     getList() {
-      c['proj/public/list'].send({ pn: 1, ps: 20 }).send({
+      c['/proj/public/list'].send({ pn: 1, ps: 20 }).send({
         0(res) {
           state.list = res.data;
         },

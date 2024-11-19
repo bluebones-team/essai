@@ -9,7 +9,7 @@ import { Form } from '~/components/form';
 import { c } from '~/ts/client';
 import { snackbar, storage } from '~/ts/state';
 
-const data = reactive({ phone: '', code: '' }) satisfies Input['login/otp'];
+const data = reactive({ phone: '', code: '' }) satisfies Input['/login/otp'];
 const timer = {
   time: ref(0),
   countdowm(time: number) {
@@ -39,9 +39,9 @@ function checkHuman() {
 /**发送验证码 */
 function send() {
   if (!(checkSend() && checkHuman())) return;
-  c['usr/phone/otp']
-    .use(progress(sendState, 'loading'))
-    .use(onceDecorator)
+  c['/usr/phone/otp']
+    .with(progress(sendState, 'loading'))
+    .with(onceDecorator)
     .send(data.phone, {
       0() {
         timer.countdowm(60);
@@ -50,9 +50,9 @@ function send() {
 }
 /**提交验证码 */
 function submit(callback: (d: typeof data) => void) {
-  c['login/otp']
-    .use(progress(submitState, 'loading'))
-    .use(onceDecorator)
+  c['/login/otp']
+    .with(progress(submitState, 'loading'))
+    .with(onceDecorator)
     .send(data, {
       0(res) {
         snackbar.show({ text: '验证通过', color: 'success' });
@@ -61,7 +61,7 @@ function submit(callback: (d: typeof data) => void) {
       },
     });
 }
-const rules = toFieldRules(account['login/otp'].in);
+const rules = toFieldRules(account['/login/otp'].in);
 const display: ContainerDisplay = [
   [
     {

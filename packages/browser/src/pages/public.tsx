@@ -106,7 +106,7 @@ const _Join = defineComponent(() => {
     if (data.recruitments[rtype]?.should_select_event) {
       snackbar.show({ text: '暂不支持该功能', color: 'info' });
     } else {
-      c['proj/join'].send(
+      c['/proj/join'].send(
         { pid: data.pid, rtype, starts },
         {
           0(res) {

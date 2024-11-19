@@ -3,9 +3,15 @@ import { omit } from 'shared';
 import { BizCode } from 'shared/data';
 
 /**create success output */
-export function o<T>(type: 'succ', data: T): Shared.Output<T>;
+export function o<T>(
+  type: 'succ',
+  data: T,
+): Extract<Shared.Output<T>, { code: 0 }>;
 /**create failure output */
-export function o(type: 'fail', msg: string): Shared.Output<undefined>;
+export function o(
+  type: 'fail',
+  msg: string,
+): Extract<Shared.Output, { code: 1 }>;
 /**convert Document to plain object */
 export function o<T extends {}>(data: Document<unknown, {}, T>): T;
 /**check output's type */

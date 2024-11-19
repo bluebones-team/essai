@@ -5,7 +5,7 @@ import { c } from '~/ts/client';
 
 const userSchedule = ref<Project['joined']['Schedule'][]>([]);
 function getUserSchedule() {
-  return c['sched/joined/all'].send(void 0, {
+  return c['/sched/joined/all'].send(void 0, {
     0(res) {
       userSchedule.value = res.data;
     },
@@ -13,7 +13,7 @@ function getUserSchedule() {
 }
 const ownProjectSchedule = ref<Project['own']['Schedule'][]>([]);
 function getAllOwnProjectSchedule() {
-  return c['sched/own/all'].send(void 0, {
+  return c['/sched/own/all'].send(void 0, {
     0(res) {
       ownProjectSchedule.value = res.data;
     },

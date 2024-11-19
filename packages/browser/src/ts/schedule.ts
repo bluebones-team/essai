@@ -1,5 +1,5 @@
 import { day, hour, min } from '~/ts/date';
-import { cloneDeep } from 'shared';
+import { deepClone } from 'shared';
 import { error } from './util';
 
 /**时间段 */
@@ -118,7 +118,7 @@ export function createEvents(
         end: start + duration,
       });
       if (filter(event)) {
-        events.concat(Array(times).fill(cloneDeep(event)));
+        events.concat(Array(times).fill(deepClone(event)));
       }
       _time += duration;
     }

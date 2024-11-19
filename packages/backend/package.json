@@ -10,7 +10,6 @@
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.6",
     "@types/koa-pino-logger": "^3.0.4",
-    "@types/koa-router": "^7.4.8",
     "bun-plugin-pino": "^1.1.0",
     "globals": "^15.9.0",
     "pino-pretty": "^11.2.2"
@@ -22,7 +21,6 @@
     "koa": "^2.15.3",
     "koa-helmet": "^7.0.2",
     "koa-pino-logger": "^4.0.0",
-    "koa-router": "^13.0.1",
     "mongoose": "^8.5.3",
     "redis": "^4.7.0",
     "shared": "workspace:*",

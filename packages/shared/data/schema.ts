@@ -1,5 +1,5 @@
 import { z } from 'zod'; /**@see https://zod.dev/ */
-import { mapValues } from '..';
+import { difference, mapValues } from '..';
 import {
   BizCode,
   CardType,
@@ -13,11 +13,14 @@ import {
   type EnumMeta,
 } from './enum';
 
-function enums<const T extends number>(d: EnumMeta<T[]>, isStr?: true) {
+function enums<const T extends number>(
+  obj: Pick<EnumMeta<T[]>, 'enums'>,
+  isStr?: true,
+) {
   type Enum = UnionToTuple<T extends number ? z.ZodLiteral<T> : never>;
   //@ts-ignore
   return z.union<Enum>(
-    d.enums.flatMap((v) =>
+    obj.enums.flatMap((v) =>
       isStr ? [z.literal(v), z.literal('' + v)] : z.literal(v),
     ),
   );
@@ -70,8 +73,20 @@ export const shared = (function () {
     refresh: z.string(),
   });
   //@ts-ignore
-  const output = <T extends z.ZodType = z.ZodAny>(data: T = z.any()) =>
-    z.object({ code: enums(BizCode), msg: z.string(), data });
+  const output = <T extends z.ZodType = z.ZodAny>(data: T = z.any()) => {
+    const dataEnums = [BizCode.Success.value];
+    return z.union([
+      z.object({
+        code: enums({ enums: dataEnums }),
+        msg: z.string(),
+        data,
+      }),
+      z.object({
+        code: enums({ enums: difference(BizCode.enums, dataEnums) }),
+        msg: z.string(),
+      }),
+    ]);
+  };
   return { timestamp, duration, message, position, token, output };
 })();
 export const project = (function () {

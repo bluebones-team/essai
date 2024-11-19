@@ -4,8 +4,8 @@ import {
   map,
   mapValues,
   pick,
-  isEqualDeep,
-  cloneDeep,
+  deepIsEqual,
+  deepClone,
   flow,
   uniqBy,
   groupBy,
@@ -138,14 +138,14 @@ describe('isEqualDeep', () => {
     const obj8 = { a: 1, b: { c: 2, d: [3, 4] }, e: { f: 6, g: 7 } };
     const obj9 = { a: 1, b: { c: 2, d: [3, 4] }, e: { f: 6, g: 8 } };
 
-    expect(isEqualDeep(obj1, obj2)).toBe(true);
-    expect(isEqualDeep(obj1, obj3)).toBe(false);
-    expect(isEqualDeep(obj1, obj4)).toBe(false);
-    expect(isEqualDeep(obj1, obj5)).toBe(false);
-    expect(isEqualDeep(obj5, obj6)).toBe(false);
-    expect(isEqualDeep(obj6, obj7)).toBe(false);
-    expect(isEqualDeep(obj7, obj8)).toBe(true);
-    expect(isEqualDeep(obj7, obj9)).toBe(false);
+    expect(deepIsEqual(obj1, obj2)).toBe(true);
+    expect(deepIsEqual(obj1, obj3)).toBe(false);
+    expect(deepIsEqual(obj1, obj4)).toBe(false);
+    expect(deepIsEqual(obj1, obj5)).toBe(false);
+    expect(deepIsEqual(obj5, obj6)).toBe(false);
+    expect(deepIsEqual(obj6, obj7)).toBe(false);
+    expect(deepIsEqual(obj7, obj8)).toBe(true);
+    expect(deepIsEqual(obj7, obj9)).toBe(false);
   });
 
   test('should handle circular references', () => {
@@ -153,15 +153,15 @@ describe('isEqualDeep', () => {
     const obj2: any = { a: 1, b: { c: 2, d: [3, 4] } };
     obj1.b.e = obj1;
     obj2.b.e = obj2;
-    expect(() => isEqualDeep(obj1, obj2)).toThrow();
+    expect(() => deepIsEqual(obj1, obj2)).toThrow();
   });
 
   test('should handle non-iterable types', () => {
     const nonIterables = [null, undefined, 123, 'string'];
     nonIterables.forEach((v) => {
-      expect(isEqualDeep(v, v)).toBe(true);
-      expect(isEqualDeep(v, {})).toBe(false);
-      expect(isEqualDeep({}, v)).toBe(false);
+      expect(deepIsEqual(v, v)).toBe(true);
+      expect(deepIsEqual(v, {})).toBe(false);
+      expect(deepIsEqual({}, v)).toBe(false);
     });
   });
 });
@@ -169,21 +169,21 @@ describe('isEqualDeep', () => {
 describe('cloneDeep', () => {
   test('should clone an object deeply', () => {
     const obj1 = { a: 1, b: { c: 2, d: [3, 4] } };
-    const obj2 = cloneDeep(obj1);
+    const obj2 = deepClone(obj1);
     obj2.b.d.push(5);
-    expect(isEqualDeep(obj1, obj2)).toBe(false);
+    expect(deepIsEqual(obj1, obj2)).toBe(false);
   });
 
   test('should handle circular references', () => {
     const obj1: any = { a: 1, b: { c: 2, d: [3, 4] } };
     obj1.b.e = obj1;
-    expect(() => cloneDeep(obj1)).toThrow();
+    expect(() => deepClone(obj1)).toThrow();
   });
 
   test('should handle non-iterable types', () => {
     const nonIterables = [null, undefined, 123, 'string'];
     nonIterables.forEach((v) => {
-      expect(isEqualDeep(cloneDeep(v), v)).toBe(true);
+      expect(deepIsEqual(deepClone(v), v)).toBe(true);
     });
   });
 });

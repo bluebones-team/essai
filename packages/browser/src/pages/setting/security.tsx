@@ -18,7 +18,7 @@ import { SectionGroup } from '~/components/section-group';
 import { c } from '~/ts//client';
 import { udata } from '~/ts/state';
 
-const rules = toFieldRules(usr['usr/pwd/edit'].in);
+const rules = toFieldRules(usr['/usr/pwd/edit'].in);
 /**更改密码 */
 function passwordEditInput() {
   const loading = ref(false);
@@ -59,7 +59,7 @@ function passwordEditInput() {
         },
       ]}
       onPass={() => {
-        c['usr/pwd/edit'].use(progress(loading, 'value')).send(data);
+        c['/usr/pwd/edit'].with(progress(loading, 'value')).send(data);
       }}
     >
       <Container display={display} />
@@ -140,7 +140,7 @@ export default defineComponent(
                     color: 'error',
                     icon: mdiDeleteOutline,
                     onClick() {
-                      c['usr/email/remove'].send(e);
+                      c['/usr/email/remove'].send(e);
                     },
                   }}
                 />

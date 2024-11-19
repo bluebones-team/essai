@@ -1,24 +1,24 @@
+import type { ParameterizedContext } from 'koa';
 import { date_ts, Gender } from 'shared/data';
-import type { ApiConfig, Input, Output } from 'shared/router';
+import type { ApiRecords, Input, Output } from 'shared/router';
 import { model, redis, sms } from '~/client';
 import { dataCreater, tokenMgr } from '~/service';
-import type { Context } from '.';
 import { o } from './util';
 
 export const routes: {
-  [P in keyof ApiConfig]?: (
-    ctx: Context & { input: Input[P] },
-  ) => MaybePromise<PartialByKey<Output[P], 'data'>>;
+  [P in keyof ApiRecords]?: (
+    ctx: ParameterizedContext & { input: Input[P] },
+  ) => MaybePromise<Output[P]>;
 } = {
   //#region account
-  async 'login/pwd'({ input }) {
+  async '/login/pwd'({ input }) {
     const { phone, pwd } = input;
     const user = await model.user.findOne({ phone });
     if (!user) return o('fail', '用户不存在');
     if (user.pwd && user.pwd !== pwd) return o('fail', '密码错误');
     return o('succ', Object.assign(tokenMgr.create(user), user.toOwn()));
   },
-  async 'login/otp'({ input }) {
+  async '/login/otp'({ input }) {
     const { phone, code } = input;
     const authCode = await redis.get(`otp:${phone}`);
     if (!authCode) return o('fail', '请获取验证码');
@@ -33,28 +33,28 @@ export const routes: {
       }));
     return o('succ', Object.assign(tokenMgr.create(user), user.toOwn()));
   },
-  async 'login/token'({ input, user }) {
-    return o('succ', Object.assign(user.toOwn()));
+  async '/login/token'({ input, user }) {
+    return o('succ', user.toOwn());
   },
-  async logout({ input, user }) {
+  async '/logout'({ input, user }) {
     const data = await user.deleteOne();
     return data.acknowledged ? o('succ', void 0) : o('fail', '注销失败');
   },
-  async 'token/refresh'({ input, user }) {
+  async '/token/refresh'({ input, user }) {
     return o('succ', tokenMgr.create(user));
   },
   //#region user
-  async 'usr/edit'({ input, user }) {
+  async '/usr/edit'({ input, user }) {
     await user.updateOne(input);
     return o('succ', void 0);
   },
-  async 'usr/pwd/edit'({ input, user }) {
+  async '/usr/pwd/edit'({ input, user }) {
     const { old: oldPwd, new: newPwd } = input;
     if (user.pwd && user.pwd !== oldPwd) return o('fail', '旧密码错误');
     await user.updateOne({ pwd: newPwd });
     return o('succ', void 0);
   },
-  async 'usr/phone/otp'({ input }) {
+  async '/usr/phone/otp'({ input }) {
     const phone = input;
     const code = dataCreater.otp();
     console.debug('otp', code);

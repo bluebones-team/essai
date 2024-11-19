@@ -7,7 +7,6 @@ import {
 } from 'vuetify/components/VList';
 import { VScrollYReverseTransition } from 'vuetify/components/transitions';
 import { useDefaults } from '~/ts/hook';
-import { checkModel } from '~/ts/util';
 
 const typePropsMap = {
   default: {

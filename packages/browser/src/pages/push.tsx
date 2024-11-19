@@ -90,7 +90,7 @@ const _LibTable = defineComponent(() => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                c['lib/remove'].send(
+                c['/lib/remove'].send(
                   { rtype: lib.rtype, uid: item.uid },
                   {
                     0(res) {
@@ -139,7 +139,7 @@ const _LibFab = () => (
       if (!proj.preview) return snackbar.show({ text: '请选择要推送的项目' });
       if (!lib.selected.length)
         return snackbar.show({ text: '请选择要推送的参与者' });
-      c['lib/push'].send(
+      c['/lib/push'].send(
         {
           pid: proj.preview.pid,
           rtype: lib.rtype,

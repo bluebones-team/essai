@@ -21,8 +21,8 @@ import { error } from '~/ts/util';
 const PwdInput = defineComponent(() => {
   const loading = ref(false);
   const showPwd = ref(false);
-  const pwd_data = reactive<Input['login/pwd']>({ phone: '', pwd: '' });
-  const pwd_validator = toFieldRules(account['login/pwd'].in);
+  const pwd_data = reactive<Input['/login/pwd']>({ phone: '', pwd: '' });
+  const pwd_validator = toFieldRules(account['/login/pwd'].in);
   return () => (
     <Form
       size="small"
@@ -36,7 +36,7 @@ const PwdInput = defineComponent(() => {
         },
       ]}
       onPass={() => {
-        c['login/pwd'].use(progress(loading, 'value')).send(pwd_data, {
+        c['/login/pwd'].with(progress(loading, 'value')).send(pwd_data, {
           0(res) {
             storage.setToken(res.data);
             udata.value = res.data;

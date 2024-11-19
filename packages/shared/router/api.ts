@@ -29,8 +29,8 @@ export type ApiRecord<
 type CheckApiPath<K> = K extends `${infer P}${string}`
   ? If<
       Eq<P, '/'>,
-      "path should't start with /",
-      If<Eq<K, Lowercase<K>>, true, 'path should be lowercase'>
+      If<Eq<K, Lowercase<K>>, true, 'path should be lowercase'>,
+      'path should start with /'
     >
   : never;
 
@@ -58,128 +58,128 @@ const code = z.string().length(6, '验证码长度为 6 位');
 
 export const account = toApi({
   /**密码登录 */
-  'login/pwd': {
+  '/login/pwd': {
     meta: { type: 'post', token: '' },
     in: z.object({ phone, pwd }),
     out: user.own.merge(shared.token),
   },
   /**验证码登录 */
-  'login/otp': {
+  '/login/otp': {
     meta: { type: 'post', token: '' },
     in: z.object({ phone, code }),
     out: user.own.merge(shared.token),
   },
   /**token 登录 */
-  'login/token': {
+  '/login/token': {
     out: user.own,
   },
   /**注销账号 */
-  logout: {},
+  '/logout': {},
   /**实名认证 */
-  'auth/realname': {
+  '/auth/realname': {
     in: user.auth,
   },
   /**招募者认证: 有绑定教育邮箱才能认证 */
-  'auth/recruiter': {},
-  'token/refresh': {
+  '/auth/recruiter': {},
+  '/token/refresh': {
     meta: { type: 'post', token: 'refresh' },
     out: shared.token,
   },
 });
 export const usr = toApi({
   /**更改基本信息 */
-  'usr/edit': {
+  '/usr/edit': {
     in: user.editable.partial(),
   },
   /**修改密码 */
-  'usr/pwd/edit': {
+  '/usr/pwd/edit': {
     in: z.object({ old: pwd, new: pwd }),
   },
   /**发送手机验证码 */
-  'usr/phone/otp': {
+  '/usr/phone/otp': {
     meta: { type: 'post', token: '' },
     in: phone,
   },
   /**修改手机号 */
-  'usr/phone/edit': {
+  '/usr/phone/edit': {
     in: z.object({ old: phone, new: phone, code }),
   },
   /**发送邮箱验证链接 */
-  'usr/email/otp': {
+  '/usr/email/otp': {
     in: z.string().email(),
   },
   /**添加邮箱 */
-  'usr/email/add': {
+  '/usr/email/add': {
     in: z.string().email(),
   },
   /**删除邮箱 */
-  'usr/email/remove': {
+  '/usr/email/remove': {
     in: z.string().email(),
   },
   /**退订邮件消息 */
-  'usr/email/unsubscribe': {},
+  '/usr/email/unsubscribe': {},
 });
 export const lib = toApi({
-  'lib/list': {
+  '/lib/list': {
     in: param.page.extend({
       filter: filter.data.pick({ rtype: true }).optional(),
     }),
     out: participant.lib.array(),
   },
-  'lib/add': {
+  '/lib/add': {
     in: param.uid.merge(param.rtype),
   },
-  'lib/remove': {
+  '/lib/remove': {
     in: param.uid.merge(param.rtype),
   },
   /**推送项目 */
-  'lib/push': {
+  '/lib/push': {
     in: param.pid.merge(param.rtype).extend({
       uids: z.number().array(),
     }),
   },
 });
 export const notify = toApi({
-  'notify/stream': {
+  '/notify/stream': {
     meta: { type: 'ws', token: '' }, // debug only
     out: shared.message,
   },
-  'notify/list': {
+  '/notify/list': {
     in: param.page,
     out: shared.message.array(),
   },
-  'notify/read': {
+  '/notify/read': {
     in: param.uid.extend({ mid: shared.message.shape.mid }),
   },
 });
 export const ptc = toApi({
-  'ptc/list': {
+  '/ptc/list': {
     in: param.page.merge(param.pid).extend({ filter: filter.data.optional() }),
     out: participant.join.array(),
   },
-  'ptc/approve': {
+  '/ptc/approve': {
     in: param.rtype.merge(param.uid),
   },
-  'ptc/reject': {
+  '/ptc/reject': {
     in: param.rtype.merge(param.uid),
   },
   /**更改日程 */
-  'ptc/event': {
+  '/ptc/event': {
     in: param.uid
       .merge(param.rtype)
       .extend({ starts: shared.timestamp.array() }),
   },
 });
 export const proj = toApi({
-  'proj/public': {
+  '/proj/public': {
     in: param.pid,
     out: project.public.data,
   },
-  'proj/public/sup': {
+  '/proj/public/sup': {
     in: param.pid,
     out: project.public.supply,
   },
-  'proj/public/list': {
+  '/proj/public/list': {
     meta: { type: 'post', token: '' },
     in: param.page.extend({
       filter: filter.data.omit({ state: true }).optional(),
@@ -187,96 +187,96 @@ export const proj = toApi({
     out: project.public.preview.array(),
   },
   /**公开项目集范围 */
-  'proj/public/range': {
+  '/proj/public/range': {
     out: filter.range,
   },
   /**用户报名的项目 */
-  'proj/joined': {
+  '/proj/joined': {
     in: param.pid,
     out: project.joined.data,
   },
-  'proj/joined/sup': {
+  '/proj/joined/sup': {
     in: param.pid,
     out: project.joined.supply,
   },
-  'proj/joined/list': {
+  '/proj/joined/list': {
     in: param.page.extend({
       filter: filter.data.pick({ rtype: true }).optional(),
     }),
     out: project.joined.preview.array(),
   },
   /**用户创建的项目 */
-  'proj/own': {
+  '/proj/own': {
     in: param.pid,
     out: project.own.data,
   },
-  'proj/own/sup': {
+  '/proj/own/sup': {
     in: param.pid,
     out: project.own.supply,
   },
-  'proj/own/list': {
+  '/proj/own/list': {
     in: param.page.extend({
       filter: filter.data.pick({ rtype: true }).optional(),
     }),
     out: project.own.preview.array(),
   },
   /**新建项目 */
-  'proj/add': {
+  '/proj/add': {
     out: project.own.data,
   },
-  'proj/edit': {
+  '/proj/edit': {
     in: project.own.data.omit({ state: true }),
   },
-  'proj/publish': {
+  '/proj/publish': {
     in: param.pid,
   },
-  'proj/remove': {
+  '/proj/remove': {
     in: param.pid,
   },
-  'proj/join': {
+  '/proj/join': {
     in: param.pid.merge(param.rtype).extend({
       starts: shared.timestamp.array().optional(),
     }),
   },
 });
 export const rpt = toApi({
-  'rpt/proj': {
+  '/rpt/proj': {
     in: report.project,
   },
   /**举报用户 */
-  'rpt/user': {
+  '/rpt/user': {
     in: report.user,
   },
 });
 export const sched = toApi({
   /**公开项目日程 */
-  'sched/public': {
+  '/sched/public': {
     in: param.pid.merge(param.rtype),
     out: project.public.schedule.omit({ pid: true, rtype: true }).array(),
   },
-  'sched/joined': {
+  '/sched/joined': {
     in: param.pid.merge(param.rtype),
     out: project.joined.schedule.omit({ pid: true, rtype: true }).array(),
   },
-  'sched/own': {
+  '/sched/own': {
     in: param.pid.merge(param.rtype),
     out: project.own.schedule.omit({ pid: true, rtype: true }).array(),
   },
-  'sched/joined/all': {
+  '/sched/joined/all': {
     out: project.joined.schedule.array(),
   },
-  'sched/own/all': {
+  '/sched/own/all': {
     out: project.own.schedule.array(),
   },
 });
 const batch = toApi({
-  batch: {
-    in: z.object({ p: z.string(), d: z.any() }).array().min(2),
+  '/batch': {
+    in: z.tuple([z.string(), z.any()]).array().min(2),
     out: shared.output().array().min(2),
   },
 });
 
-export const apiConfig = {
+export const apiRecords = {
   ...account,
   ...usr,
   ...lib,
@@ -287,4 +287,13 @@ export const apiConfig = {
   ...sched,
   ...batch,
 };
-export type ApiConfig = typeof apiConfig;
+export type ApiRecords = typeof apiRecords;
+export type ApiRecordTypes = {
+  [P in keyof ApiRecords]: {
+    in: z.infer<ApiRecords[P]['in']>;
+    out: z.infer<ApiRecords[P]['out']>;
+  };
+};
+export type Path = keyof ApiRecords;
+export type Input = { [K in keyof ApiRecords]: ApiRecordTypes[K]['in'] };
+export type Output = { [K in keyof ApiRecords]: ApiRecordTypes[K]['out'] };

@@ -13,7 +13,7 @@ export function errorFactory<T extends boolean = true>(opts: {
     if (opts.debugger) debugger;
     if (opts.console) {
       console.error(msg, ...data);
-      console.trace();
+      // console.trace();
     }
     opts.cb?.(msg);
     if (opts.throw) throw new Error(msg);
@@ -89,38 +89,38 @@ export function omit<T extends LooseObject, K extends keyof T>(
   return result as Omit<T, K>;
 }
 /**@example isEqualDeep({a: {b: 1}}, {a: {b: 1}}) // true */
-export function isEqualDeep(
+export function deepIsEqual(
   a: unknown,
   b: unknown,
   cache: Set<unknown> = new Set(),
 ) {
   if (isFunction(a) || isFunction(b))
-    return error('isEqualDeep does not support functions');
+    return error('deepIsEqual does not support functions');
   if (cache.has(a) || cache.has(b))
-    return error('isEqualDeep does not support circular references');
+    return error('deepIsEqual does not support circular references');
   if (isObject(a) && isObject(b)) {
     if (Object.is(a, b))
-      return error('isEqualDeep does not support circular references');
+      return error('deepIsEqual does not support circular references');
     cache.add(a);
     cache.add(b);
     const aKeys = Object.keys(a);
     const bKeys = Object.keys(b);
     if (aKeys.length !== bKeys.length) return false;
     for (const key of aKeys) {
-      if (!isEqualDeep(a[key], b[key], cache)) return false;
+      if (!deepIsEqual(a[key], b[key], cache)) return false;
     }
     return true;
   }
   return Object.is(a, b);
 }
-export function cloneDeep<T>(e: T, cache: Set<unknown> = new Set()): T {
-  if (isFunction(e)) return error('cloneDeep does not support functions');
+export function deepClone<T>(e: T, cache: Set<unknown> = new Set()): T {
+  if (isFunction(e)) return error('deepClone does not support functions');
   if (cache.has(e))
-    return error('cloneDeep does not support circular references');
+    return error('deepClone does not support circular references');
   if (isObject(e)) {
     cache.add(e);
-    if (Array.isArray(e)) return e.map((v) => cloneDeep(v, cache)) as T;
-    return mapValues(e, (v) => cloneDeep(v, cache));
+    if (Array.isArray(e)) return e.map((v) => deepClone(v, cache)) as T;
+    return mapValues(e, (v) => deepClone(v, cache));
   }
   return e;
 }
@@ -162,25 +162,85 @@ export function groupBy(arr: any[], by: any) {
   });
   return result;
 }
+/**@example difference([1, 2, 3], [2, 3, 4]) // [1] */
+export function difference<
+  const A extends unknown[],
+  const B extends unknown[],
+>(a: A, b: B) {
+  const setB = new Set(b);
+  return a.filter((e) => !setB.has(e)) as UnionToTuple<
+    Exclude<A[number], B[number]>
+  >;
+}
+/**@example intersection([1, 2, 3], [2, 3, 4]) // [2, 3] */
+export function intersection<
+  const A extends unknown[],
+  const B extends unknown[],
+>(a: A, b: B) {
+  const setB = new Set(b);
+  return a.filter((e) => setB.has(e)) as UnionToTuple<
+    Extract<A[number], B[number]>
+  >;
+}
 //#endregion lodash
 //#region onion
 export type Middle<T extends {}> = (
   ctx: T,
-  next: () => MaybePromise<unknown>,
-) => unknown;
-export class Onion<T extends {}> {
+  next: () => MaybePromise<any>,
+) => MaybePromise<any>;
+export type ComposedMiddle<T extends {}> = (
+  ctx: T,
+  next?: () => MaybePromise<any>,
+  start?: string | number,
+) => MaybePromise<any>;
+export class Onion<T extends {}, K extends string = string> {
   middles;
+  readonly markers = new Proxy({} as { [P in K]: number }, {
+    get(o, k: K) {
+      const v = o[k];
+      if (typeof v !== 'number') throw new Error(`marker not found: ${k}`);
+      return v;
+    },
+  });
   constructor(middles: Middle<T>[] = []) {
     this.middles = [...middles];
   }
-  use(middle: Middle<T>) {
-    this.middles.push(middle);
+  /**add middle for onion */
+  use(middle: Middle<T>, id?: K | string | number) {
+    typeof id === 'undefined'
+      ? this.middles.push(middle)
+      : this.middles.splice(this.find(id), 0, middle);
     return this;
   }
-  run(ctx: T, index = 0) {
-    if (index === this.middles.length) return;
-    const next = () => this.run(ctx, index + 1);
-    return this.middles[index](ctx, next);
+  /**add marker for onion */
+  mark(name: K) {
+    this.markers[name] = this.middles.length;
+    return this;
+  }
+  private find(id: K | string | number) {
+    const index =
+      typeof id === 'number'
+        ? id
+        : (this.middles.findIndex((e) => e.name === id) ??
+          this.markers[id as K]);
+    if (index === -1) error(`Middle not found: ${id}`);
+    return index;
+  }
+  /**@see https://github.com/koajs/compose/blob/master/index.js */
+  get composed(): ComposedMiddle<T> {
+    return (ctx, next, start = 0) => {
+      const dispatch = (index: number) => {
+        if (index === this.middles.length) return next?.();
+        const middle = this.middles[index];
+        try {
+          // console.log(`dispatch middle: ${middle.name}`, ctx.path);
+          return middle(ctx, () => dispatch(index + 1));
+        } catch (err) {
+          console.error(`middle error: ${middle.name}`, err);
+        }
+      };
+      return dispatch(this.find(start));
+    };
   }
 }
 //#region other

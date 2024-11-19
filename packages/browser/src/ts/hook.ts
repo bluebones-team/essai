@@ -1,6 +1,6 @@
 import {
-  cloneDeep,
-  isEqualDeep,
+  deepClone,
+  deepIsEqual,
   isObject,
   mapValues,
   pick,
@@ -106,17 +106,17 @@ export function useList<T>(items: T[]) {
   };
 }
 export function useTempModel<T>(model: Ref<T>) {
-  const clone = () => cloneDeep(toRaw(model.value));
+  const clone = () => deepClone(toRaw(model.value));
   const temp = ref<T>() as Ref<T>;
   watchEffect(() => (temp.value = clone()));
-  const hasChange = computed(() => !isEqualDeep(model.value, temp.value));
+  const hasChange = computed(() => !deepIsEqual(model.value, temp.value));
   return {
     model: temp,
     hasChange,
     save() {
       if (!hasChange.value) return;
       if (!temp.value) return error('temp model is null');
-      model.value = cloneDeep(temp.value);
+      model.value = deepClone(temp.value);
     },
     cancel() {
       if (!this.hasChange.value) return;
@@ -150,7 +150,7 @@ export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
   });
   watchEffect(() => {
     if (!state.preview) return;
-    c[`proj/${type}/sup`].use(progress(showProgressbar, 'value')).send(
+    c[`/proj/${type}/sup`].with(progress(showProgressbar, 'value')).send(
       { pid: state.preview.pid },
       {
         //@ts-ignore
@@ -171,15 +171,17 @@ export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
   function fetchList(
     filterData: Filter.Data = { rtype: RecruitmentType.Subject.value },
   ) {
-    return c[`proj/${type}/list`].use(progress(showProgressbar, 'value')).send(
-      { ...state.page, filter: filterData },
-      {
-        //@ts-ignore
-        0(res) {
-          state.list = res.data;
+    return c[`/proj/${type}/list`]
+      .with(progress(showProgressbar, 'value'))
+      .send(
+        { ...state.page, filter: filterData },
+        {
+          //@ts-ignore
+          0(res) {
+            state.list = res.data;
+          },
         },
-      },
-    );
+      );
   }
   return {
     state,
@@ -209,8 +211,8 @@ export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
       });
       return;
     }
-    return c[`proj/${'public'}/range`]
-      .use(progress(showProgressbar, 'value'))
+    return c[`/proj/${'public'}/range`]
+      .with(progress(showProgressbar, 'value'))
       .send(void 0, {
         0(res) {
           //@ts-ignore
@@ -237,7 +239,7 @@ export function usePtc(proj: Ref<Project['Preview'] | null>) {
   function fetchList() {
     if (!proj.value)
       return snackbar.show({ text: '请选择项目', color: 'error' });
-    return c['ptc/list'].use(progress(showProgressbar, 'value')).send(
+    return c['/ptc/list'].with(progress(showProgressbar, 'value')).send(
       {
         ...state.page,
         filter: { rtype: state.rtype },
@@ -279,7 +281,7 @@ export function useLib() {
     page: { ps: 20, pn: 1 },
   });
   function fetchList() {
-    return c['lib/list'].use(progress(showProgressbar, 'value')).send(
+    return c['/lib/list'].with(progress(showProgressbar, 'value')).send(
       { ...state.page, filter: { rtype: state.rtype } },
       {
         0(res) {

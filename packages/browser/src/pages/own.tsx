@@ -71,7 +71,7 @@ const _Table = () => (
             variant="text"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
-              c['proj/remove'].send(
+              c['/proj/remove'].send(
                 { pid: item.pid },
                 {
                   0(res) {
@@ -120,7 +120,7 @@ const _Fab = () =>
       absolute
       app
       onClick={() => {
-        c['proj/add'].send(void 0, {
+        c['/proj/add'].send(void 0, {
           0(res) {
             proj.list.push(res.data);
             proj.preview = res.data;
@@ -143,7 +143,7 @@ const _Detail = defineComponent(() => {
   async function save() {
     const tempModel = check();
     if (temp.hasChange.value) {
-      await c['proj/edit'].send(tempModel, {
+      await c['/proj/edit'].send(tempModel, {
         0(res) {
           temp.save();
           snackbar.show({
@@ -159,7 +159,7 @@ const _Detail = defineComponent(() => {
   async function publish() {
     await save();
     const tempModel = check();
-    c['proj/publish'].send(
+    c['/proj/publish'].send(
       { pid: tempModel.pid },
       {
         0(res) {
@@ -249,7 +249,7 @@ const _PtcList = () => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                c['ptc/reject'].send(
+                c['/ptc/reject'].send(
                   { rtype: ptc.rtype, uid: item.uid },
                   {
                     0(res) {
