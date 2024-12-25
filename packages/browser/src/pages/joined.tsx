@@ -1,5 +1,5 @@
 import { mdiRun } from '@mdi/js';
-import { ProjectType, RecruitmentType, Role } from 'shared/data';
+import { ExperimentType, RecruitmentType, Role } from 'shared/data';
 import { defineComponent, provide, watchEffect } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
@@ -9,10 +9,15 @@ import { VMain } from 'vuetify/components/VMain';
 import { Dialog } from '~/components/dialog';
 import { ProjectInfo } from '~/components/proj-info';
 import { Table } from '~/components/table';
-import { usePopup, useProjData } from '~/ts/hook';
+import { usePopup, useExpData } from '~/ts/hook';
 import { injection } from '~/ts/state';
 
-const { proj, fetchProjList, filter, simpleSearch } = useProjData('joined');
+const {
+  proj,
+  fetchExpList: fetchProjList,
+  filter,
+  simpleSearch,
+} = useExpData('joined');
 
 function _Table() {
   const { mobile } = useDisplay();
@@ -30,8 +35,8 @@ function _Table() {
           title: '类型',
           key: 'type',
           value: (item) => (
-            <VChip color={ProjectType[item.type].color}>
-              {ProjectType[item.type].name}
+            <VChip color={ExperimentType[item.type].color}>
+              {ExperimentType[item.type].name}
             </VChip>
           ),
         },

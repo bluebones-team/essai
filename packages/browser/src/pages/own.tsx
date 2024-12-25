@@ -9,8 +9,8 @@ import {
 } from '@mdi/js';
 import {
   Gender,
-  ProjectState,
-  ProjectType,
+  ExperimentState,
+  ExperimentType,
   RecruitmentType,
   Role,
 } from 'shared/data';
@@ -35,14 +35,20 @@ import { ProjectInfo } from '~/components/proj-info';
 import { Table } from '~/components/table';
 import { c } from '~/ts/client';
 import { birth_age } from 'shared/data';
-import { usePopup, useProjData, useTempModel } from '~/ts/hook';
+import { usePopup, useExpData, useTempModel } from '~/ts/hook';
 import { injection, snackbar } from '~/ts/state';
 import { error } from '~/ts/util';
 
-const { proj, fetchProjList, filter, simpleSearch, ptc, fetchPtcList } =
-  useProjData('own');
+const {
+  proj,
+  fetchExpList: fetchProjList,
+  filter,
+  simpleSearch,
+  ptc,
+  fetchPtcList,
+} = useExpData('own');
 const editable = () =>
-  !!proj.preview && ProjectState[proj.preview.state].editable;
+  !!proj.preview && ExperimentState[proj.preview.state].editable;
 
 const _Table = () => (
   <Table
@@ -54,8 +60,8 @@ const _Table = () => (
         title: '类型',
         key: 'type',
         value: (item) => (
-          <VChip color={ProjectType[item.type].color}>
-            {ProjectType[item.type].name}
+          <VChip color={ExperimentType[item.type].color}>
+            {ExperimentType[item.type].name}
           </VChip>
         ),
       },
@@ -71,8 +77,8 @@ const _Table = () => (
             variant="text"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
-              c['/proj/remove'].send(
-                { pid: item.pid },
+              c['/exp/remove'].send(
+                { eid: item.eid },
                 {
                   0(res) {
                     proj.list.splice(proj.list.indexOf(item), 1);
@@ -96,7 +102,7 @@ const _Table = () => (
             divided
             mandatory
           >
-            {ProjectState.items.map((e) => (
+            {ExperimentState.items.map((e) => (
               <VBtn value={e.value}>{e.title}</VBtn>
             ))}
           </VBtnToggle>
@@ -104,7 +110,7 @@ const _Table = () => (
       ),
       noData: () => (
         <VAlert
-          title={ProjectState[filter.data.state].noItem}
+          title={ExperimentState[filter.data.state].noItem}
           icon={mdiInformationOutline}
         />
       ),
@@ -112,7 +118,7 @@ const _Table = () => (
   />
 );
 const _Fab = () =>
-  filter.data.state === ProjectState.Ready.value ? (
+  filter.data.state === ExperimentState.Ready.value ? (
     <VFab
       class="ms-4"
       icon="$plus"
@@ -120,7 +126,7 @@ const _Fab = () =>
       absolute
       app
       onClick={() => {
-        c['/proj/add'].send(void 0, {
+        c['/exp/add'].send(void 0, {
           0(res) {
             proj.list.push(res.data);
             proj.preview = res.data;
@@ -143,7 +149,7 @@ const _Detail = defineComponent(() => {
   async function save() {
     const tempModel = check();
     if (temp.hasChange.value) {
-      await c['/proj/edit'].send(tempModel, {
+      await c['/exp/edit'].send(tempModel, {
         0(res) {
           temp.save();
           snackbar.show({
@@ -159,11 +165,11 @@ const _Detail = defineComponent(() => {
   async function publish() {
     await save();
     const tempModel = check();
-    c['/proj/publish'].send(
-      { pid: tempModel.pid },
+    c['/exp/publish'].send(
+      { eid: tempModel.eid },
       {
         0(res) {
-          tempModel.state = ProjectState.Passed.value;
+          tempModel.state = ExperimentState.Passed.value;
           snackbar.show({
             text: `${tempModel.title} 已发布`,
             color: 'success',
@@ -189,7 +195,7 @@ const _Detail = defineComponent(() => {
             class: 'mr-4',
           },
         ]
-      : proj.preview?.state === ProjectState.Passed.value
+      : proj.preview?.state === ExperimentState.Passed.value
         ? [
             {
               text: '参与者',
@@ -249,7 +255,7 @@ const _PtcList = () => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                c['/ptc/reject'].send(
+                c['/exp/recruit/ptc/reject'].send(
                   { rtype: ptc.rtype, uid: item.uid },
                   {
                     0(res) {

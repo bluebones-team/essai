@@ -5,5 +5,5 @@ import type { Theme, Role } from '../data';
 
 declare global {
   type LooseObject = Record<string, any>;
-  type LocalStorage = Shared.Token & { theme: Theme; role: Role };
+  type LocalStorage = Shared['token'] & { theme: Theme; role: Role };
 }

@@ -64,7 +64,7 @@ router.beforeEach((to, from) => {
   if (role === void 0) {
     return true;
   }
-  if (role === Role.Recruiter.value && !udata.value?.auth.recruiter) {
+  if (role === Role.Recruiter.value && !udata.value?.recruiter) {
     return { path: '/404' };
   }
   setting.display.role = role;

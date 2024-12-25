@@ -55,12 +55,13 @@ export function toEnum<const T extends ItemKD[]>(config: T) {
 }
 
 /**业务码 */
-export const BizCode = toEnum([
-  ['Success', { title: '响应成功', ok: true }],
-  ['Fail', { title: '响应失败', ok: false }],
-  ['Unauthorizen', { title: 'Token 无效', ok: false }],
+export const OutputCode = toEnum([
+  ['Success', { msg: 'ok' }],
+  ['Fail', { msg: 'fail' }],
+  ['Unauthorizen', { msg: 'token invalid' }],
+  ['NoUser', { msg: '用户不存在' }],
 ]);
-export type BizCode = Enum<typeof BizCode>;
+export type OutputCode = Enum<typeof OutputCode>;
 /**招募类型 */
 export const RecruitmentType = toEnum([
   ['Subject', { title: '被试', color: 'green' }],
@@ -68,9 +69,9 @@ export const RecruitmentType = toEnum([
 ]);
 export type RecruitmentType = Enum<typeof RecruitmentType>;
 /**项目类型 */
-export const ProjectType = toEnum([
-  ['Survey', { title: '问卷（线下）', color: 'green' }],
-  ['Interview', { title: '访谈（线下）', color: 'red' }],
+export const ExperimentType = toEnum([
+  // ['Survey', { title: '问卷（线下）', color: 'green' }],
+  // ['Interview', { title: '访谈（线下）', color: 'red' }],
   ['Behavior', { title: '行为实验', color: 'blue' }],
   ['ERP', { title: '事件相关电位', color: 'purple' }],
   ['tDCS', { title: '经颅电刺激', color: 'cyan' }],
@@ -79,9 +80,9 @@ export const ProjectType = toEnum([
   ['fNIRS', { title: '近红外光学成像', color: 'lime' }],
   ['Other', { title: '其他', color: 'gray' }],
 ]);
-export type ProjectType = Enum<typeof ProjectType>;
+export type ExperimentType = Enum<typeof ExperimentType>;
 /**项目状态 */
-export const ProjectState = toEnum([
+export const ExperimentState = toEnum([
   [
     'Ready',
     {
@@ -120,7 +121,13 @@ export const ProjectState = toEnum([
     },
   ],
 ]);
-export type ProjectState = Enum<typeof ProjectState>;
+export type ExperimentState = Enum<typeof ExperimentState>;
+/**报名状态 */
+export const JoinState = toEnum([
+  ['Approved', { title: '已采纳', color: 'success' }],
+  ['Rejected', { title: '未采纳', color: 'default' }],
+]);
+export type JoinState = Enum<typeof JoinState>;
 /**用户性别 */
 export const Gender = toEnum([
   ['Male', { title: '男', color: 'blue', icon: mdiGenderMale }],
@@ -135,19 +142,19 @@ export const CardType = toEnum([
 ]);
 export type CardType = Enum<typeof CardType>;
 /**项目举报类型 */
-export const RptProjectType = toEnum([
+export const ReportProjectType = toEnum([
   ['Fee', { title: '报酬', color: 'green' }],
   ['AD', { title: '广告信息', color: 'red' }],
   ['Other', { title: '其他', color: 'gray' }],
 ]);
-export type RptProjectType = Enum<typeof RptProjectType>;
+export type ReportProjectType = Enum<typeof ReportProjectType>;
 /**用户举报类型 */
-export const RptUserType = toEnum([
+export const ReportUserType = toEnum([
   ['NoContact', { title: '无法联系', color: 'green' }],
   ['NoJoin', { title: '未按时参加', color: 'red' }],
   ['Other', { title: '其他', color: 'gray' }],
 ]);
-export type RptUserType = Enum<typeof RptUserType>;
+export type ReportUserType = Enum<typeof ReportUserType>;
 /**消息类型 */
 export const MessageType = toEnum([
   [

@@ -1,18 +1,21 @@
-import { c } from '~/ts/util';
+import { c } from '~/ts/client';
 import { defineComponent, reactive } from '@vue-mini/core';
 
 defineComponent(() => {
   const state = reactive({
-    list: [] as Project['public']['Preview'][],
+    list: [] as FTables['experiment']['public']['preview'][],
   });
   return {
     state,
     getList() {
-      c['/proj/public/list'].send({ pn: 1, ps: 20 }).send({
-        0(res) {
-          state.list = res.data;
+      c['/exp/public/list'].send(
+        { pn: 1, ps: 20 },
+        {
+          0(res) {
+            state.list = res.data;
+          },
         },
-      });
+      );
     },
   };
 });

@@ -9,7 +9,7 @@ import { error } from './util';
 /**显示加载进度条 */
 export const showProgressbar = ref(false);
 /**用户数据 */
-export const udata = ref<User.Own>();
+export const udata = ref<FTables['user']['own']>();
 /**用户设置 */
 export const setting = reactive({
   /**显示 */
@@ -40,7 +40,7 @@ export const setting = reactive({
   },
 });
 /**消息 */
-export const messages = ref<Shared.Message[]>([]);
+export const messages = ref<Shared['message'][]>([]);
 
 // 初始化
 setTimeout(() => {
@@ -49,7 +49,7 @@ setTimeout(() => {
       udata.value = res.data;
     },
   });
-  c['/notify/list'].send(
+  c['/msg/list'].send(
     { pn: 1, ps: 20 },
     {
       0(res) {
@@ -57,7 +57,7 @@ setTimeout(() => {
       },
     },
   );
-  c['/notify/stream'].send(void 0, {
+  c['/msg/stream'].send(void 0, {
     0(res) {
       messages.value.push(res.data);
     },
@@ -90,7 +90,7 @@ export const storage = {
   remove<K extends keyof LocalStorage>(key: K) {
     localStorage.removeItem(key);
   },
-  setToken(obj: Shared.Token) {
+  setToken(obj: Shared['token']) {
     each(pick(obj, ['access', 'refresh']), (v, k) =>
       this.set(k as keyof LocalStorage, v),
     );

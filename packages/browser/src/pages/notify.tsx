@@ -24,7 +24,7 @@ const state = reactive({
       ? "totalEnum can't be MessageType"
       : MessageType | typeof totalEnum
   >(totalEnum),
-  message: ref<Shared.Message>(),
+  message: ref<Shared['message']>(),
 });
 
 const _Nav = defineComponent(() => {
@@ -125,7 +125,7 @@ const _Detail = defineComponent(() => {
     if (typeof timer === 'number') window.clearTimeout(timer);
     timer = window.setTimeout(() => {
       if (mobile.value && !detail_dialog.isShow.value) return;
-      c['/notify/read'].send(
+      c['/msg/read'].send(
         { uid: msg.uid, mid: msg.mid },
         {
           0() {

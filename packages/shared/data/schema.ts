@@ -1,15 +1,15 @@
 import { z } from 'zod'; /**@see https://zod.dev/ */
 import { difference, mapValues } from '..';
 import {
-  BizCode,
-  CardType,
+  ExperimentState,
+  ExperimentType,
   Gender,
+  JoinState,
   MessageType,
-  ProjectState,
-  ProjectType,
+  OutputCode,
   RecruitmentType,
-  RptProjectType,
-  RptUserType,
+  ReportProjectType,
+  ReportUserType,
   type EnumMeta,
 } from './enum';
 
@@ -23,6 +23,7 @@ function enums<const T extends number>(
     obj.enums.flatMap((v) =>
       isStr ? [z.literal(v), z.literal('' + v)] : z.literal(v),
     ),
+    { message: `枚举值无效: ${obj.enums}` },
   );
 }
 function diff<const U extends {}, const T extends U>(
@@ -42,10 +43,32 @@ const max100Str = z.string().max(100);
 export const param = {
   page: z.object({ pn: posInt, ps: posInt }),
   uid: z.object({ uid: posInt }),
-  pid: z.object({ pid: posInt }),
+  eid: z.object({ eid: posInt }),
   /**招募类型、参与者类型 */
   rtype: z.object({ rtype: enums(RecruitmentType) }),
 };
+//@ts-ignore
+export function output<T extends z.ZodType = z.ZodAny>(data: T = z.any()) {
+  const dataEnums = [OutputCode.Success.value];
+  return z.union([
+    z.object({
+      code: enums({ enums: dataEnums }),
+      msg: z.string(),
+      data,
+    }),
+    z.object({
+      code: enums({ enums: difference(OutputCode.enums, dataEnums) }),
+      msg: z.string(),
+    }),
+  ]);
+}
+export type Output<T = any> = ReturnType<
+  typeof output<T extends z.ZodType ? T : z.ZodType<T>>
+>;
+export type ExtractOutput<
+  T extends { code: OutputCode },
+  U extends OutputCode,
+> = T extends { code: infer C } ? (U extends C ? T : never) : never;
 
 export const shared = (function () {
   /**时间戳, 单位s */
@@ -55,7 +78,6 @@ export const shared = (function () {
     .min(0)
     .max(2 * 60)
     .brand<'duration'>();
-  /**消息 */
   const message = param.uid.extend({
     mid: posInt,
     type: enums(MessageType),
@@ -72,107 +94,13 @@ export const shared = (function () {
     access: z.string(),
     refresh: z.string(),
   });
-  //@ts-ignore
-  const output = <T extends z.ZodType = z.ZodAny>(data: T = z.any()) => {
-    const dataEnums = [BizCode.Success.value];
-    return z.union([
-      z.object({
-        code: enums({ enums: dataEnums }),
-        msg: z.string(),
-        data,
-      }),
-      z.object({
-        code: enums({ enums: difference(BizCode.enums, dataEnums) }),
-        msg: z.string(),
-      }),
-    ]);
-  };
-  return { timestamp, duration, message, position, token, output };
+  return { timestamp, duration, message, position, token };
 })();
-export const project = (function () {
-  const participantCondition = z.object({
-    gender: enums(Gender).optional(),
-    birthday_range: z.tuple([shared.timestamp, shared.timestamp]).optional(),
-  });
-  const recruitmentContent = z.object({
-    // condition: participantCondition,
-    total: posInt.max(1e3),
-    cur: posInt.max(1e3),
-  });
-  const recruitment = param.rtype.extend({
-    fee: posInt.max(1e3),
-    should_select_event: z.boolean(),
-    durations: shared.duration.array().max(4).min(1),
-    tip: z.string(),
-    max_concurrency: posInt,
-    contents: recruitmentContent.array().min(1),
-  });
-  const _public = (function () {
-    const preview = param.pid.extend({
-      type: enums(ProjectType),
-      title: max20Str,
-      position: shared.position,
-      recruitments: recruitment.array(),
-    });
-    const supply = param.uid.extend({
-      desc: max100Str,
-      /**知情同意书 */
-      // consent: max100Str,
-      events: z.tuple([shared.timestamp, shared.timestamp]).array().min(1),
-    });
-    const data = preview.merge(supply);
-    const schedule = param.pid.merge(param.rtype).extend({
-      start: shared.timestamp,
-      end: shared.timestamp,
-    });
-    return { preview, supply, data, schedule };
-  })();
-  const joined = (function () {
-    const preview = _public.preview.omit({ recruitments: true });
-    const data = _public.data;
-    const supply = diff(data, preview);
-    const schedule = _public.schedule;
-    return { preview, supply, data, schedule };
-  })();
-  const own = (function () {
-    const preview = param.pid.extend({
-      type: enums(ProjectType),
-      title: max20Str,
-      state: enums(ProjectState),
-    });
-    const data = _public.data.extend({ state: enums(ProjectState) });
-    const supply = diff(data, preview);
-    const schedule = joined.schedule.extend({ uids: posInt.array() });
-    return { preview, supply, data, schedule };
-  })();
-  return { recruitment, public: _public, joined, own };
-})();
-/**项目筛选器 */
-export const filter = (function () {
-  const range = z.object({
-    duration_range: z.tuple([shared.duration, shared.duration]),
-    times_range: z.tuple([posInt.max(10), posInt.max(10)]),
-    fee_range: z.tuple([
-      project.recruitment.shape.fee,
-      project.recruitment.shape.fee,
-    ]),
-  });
-  const data = range
-    .merge(param.rtype)
-    .extend({
-      type: enums(ProjectType),
-      state: enums(ProjectState),
-      search: max20Str,
-      /**搜索指令 */
-      // command: z.string(),
-    })
-    .partial();
-  return { range, data };
-})();
+
 export const user = (function () {
   const editable = z.object({
     name: max20Str,
-    face: z.string().url(),
+    face: z.string().url(), // 存在安全隐患
   });
   const _public = param.uid.merge(editable).extend({
     gender: enums(Gender),
@@ -181,46 +109,153 @@ export const user = (function () {
   const own = _public.extend({
     phone: z.string().length(11, '手机号长度为 11 位'),
     emails: z.string().email().array(),
-    auth: z.object({
-      /**实名信息：特** *****5 */
-      realname: z.string().optional(),
-      /**认证邮箱 */
-      recruiter: z.string().email().optional(),
-    }),
+    recruiter: z.boolean(),
     pwd: z.boolean(),
   });
-  const model = own.extend({
-    pwd: z
-      .string()
-      .regex(/^\w{6,16}$/, '密码长度为 6-16 位，只能包含字母、数字或下划线'),
-    created_time: shared.timestamp,
+  const filter = z.object({
+    gender_range: z.tuple([enums(Gender), enums(Gender)]),
+    birthday_range: z.tuple([shared.timestamp, shared.timestamp]),
   });
-  const auth = z.object({
-    name: max20Str,
-    type: enums(CardType),
-    num: z.string().max(30),
-  });
-  return { public: _public, editable, own, model, auth };
+  return {
+    front: { public: _public, own, filter, editable },
+    back: own.extend({
+      pwd: z
+        .string()
+        .regex(/^\w{6,16}$/, '密码长度为 6-16 位，只能包含字母、数字或下划线')
+        .optional(),
+      created_at: shared.timestamp,
+    }),
+    // realname: z.object({
+    //   name: max20Str,
+    //   type: enums(CardType),
+    //   num: z.string().max(30),
+    // }),
+  };
 })();
+/**用户收集的参与者 */
+export const user_participant = {
+  front: user.front.public.merge(param.rtype),
+  back: param.uid.merge(param.rtype).extend({
+    /**参与者 uid */
+    puid: posInt,
+  }),
+};
+
+export const recruitment_condition = (function () {
+  const base = z.object({ size: posInt }); /* .merge(user_filter) */
+  return {
+    front: base.extend({ current: posInt }),
+    back: base.extend({ rcid: posInt, rid: posInt }),
+  };
+})();
+/**招募的参与者 */
+export const recruitment_participant = {
+  front: user.front.public
+    .merge(param.rtype)
+    .extend({ state: enums(JoinState) }),
+  back: param.uid.extend({ rcid: posInt, state: enums(JoinState) }),
+};
+export const recruitment = (function () {
+  const back = param.eid.merge(param.rtype).extend({
+    rid: posInt,
+    fee: posInt.max(1e3),
+    notice: max100Str,
+    durations: shared.duration.array().min(1),
+    // max_concurrency: posInt,
+    // should_select_event: z.boolean(),
+  });
+  return {
+    front: back.extend({
+      conditions: recruitment_condition.front.array().min(1),
+    }),
+    back,
+  };
+})();
+export const experiment = (function () {
+  const _public = (function () {
+    const preview = param.eid.extend({
+      type: enums(ExperimentType),
+      title: max20Str,
+      position: shared.position,
+      recruitments: recruitment.front.array(),
+    });
+    const supply = param.uid.extend({
+      notice: max100Str,
+      // events: z.tuple([shared.timestamp, shared.timestamp]).array().min(1),
+    });
+    const data = preview.merge(supply);
+    const schedule = param.eid.merge(param.rtype).extend({
+      start: shared.timestamp,
+      end: shared.timestamp,
+    });
+    return { preview, supply, data };
+  })();
+  const joined = (function () {
+    const preview = _public.preview.omit({ recruitments: true });
+    const data = _public.data;
+    const supply = diff(data, preview);
+    // const schedule = _public.schedule;
+    return { preview, supply, data };
+  })();
+  const own = (function () {
+    const preview = param.eid.extend({
+      type: enums(ExperimentType),
+      title: max20Str,
+      state: enums(ExperimentState),
+    });
+    const data = _public.data.extend({ state: enums(ExperimentState) });
+    const supply = diff(data, preview);
+    // const schedule = joined.schedule.extend({ uids: posInt.array() });
+    return { preview, supply, data };
+  })();
+  const filter = (function () {
+    const range = z.object({
+      duration_range: z.tuple([shared.duration, shared.duration]),
+      times_range: z.tuple([posInt, posInt]),
+      fee_range: z.tuple([
+        recruitment.front.shape.fee,
+        recruitment.front.shape.fee,
+      ]),
+    });
+    return {
+      range,
+      data: range
+        .merge(param.rtype)
+        .extend({
+          type: enums(ExperimentType),
+          state: enums(ExperimentState),
+          search: max20Str,
+          /**搜索指令 */
+          // command: z.string(),
+        })
+        .partial(),
+    };
+  })();
+  return {
+    front: { public: _public, joined, own, filter },
+    back: own.data.omit({ recruitments: true }).extend({
+      created_at: shared.timestamp,
+    }),
+  };
+})();
+export type ExperimentDataType = 'public' | 'joined' | 'own';
 /**举报 */
-export const report = (function () {
-  const project = param.pid.extend({
-    type: enums(RptProjectType),
+export const report = {
+  experiment: param.eid.extend({
+    type: enums(ReportProjectType),
     content: max100Str,
-  });
-  const user = param.uid.extend({
-    type: enums(RptUserType),
+  }),
+  user: param.uid.extend({
+    type: enums(ReportUserType),
     content: max100Str,
-  });
-  return { project, user };
-})();
-/**参与者 */
-export const participant = (function () {
-  const join = user.public.merge(param.rtype).extend({
-    // events: z.any().array(),
-  });
-  const lib = user.public.extend({
-    rtypes: enums(RecruitmentType).array(),
-  });
-  return { join, lib };
-})();
+  }),
+};
+
+export const tables = {
+  user,
+  user_participant,
+  experiment,
+  recruitment,
+  recruitment_condition,
+  recruitment_participant,
+} satisfies Record<string, { front: {}; back: z.ZodType }>;

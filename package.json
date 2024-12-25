@@ -1,5 +1,5 @@
 {
-  "name": "essai",
+  "name": "recruit",
   "author": "Bluebones Team",
   "module": "index.ts",
   "private": true,
@@ -13,12 +13,9 @@
   ],
   "devDependencies": {
     "@types/bun": "latest",
-    "@vitest/coverage-v8": "^2.1.1",
-    "cypress": "^13.14.2",
     "dotenv": "^16.4.5",
     "husky": "^9.1.5",
-    "prettier": "^3.3.3",
-    "vitest": "^2.1.1"
+    "prettier": "^3.3.3"
   },
   "peerDependencies": {
     "typescript": "^5.5.4"

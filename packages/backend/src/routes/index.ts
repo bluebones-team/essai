@@ -1,44 +1,29 @@
 import type { ParameterizedContext } from 'koa';
-import type { Model } from 'mongoose';
-import { BizCode } from 'shared/data';
-import { b_batch, zodCheck } from 'shared/middle';
+import { OutputCode } from 'shared/data';
 import {
   apiRecords,
-  createProxyContext,
+  b_batch,
   Router,
+  zodCheck,
   type ApiRecords,
-  type ApiRecordTypes,
   type Path,
 } from 'shared/router';
 import { zocker } from 'zocker';
-import { model } from '~/client';
-import { tokenMgr } from '~/service';
+import { db } from '~/client';
+import { tokenMgr } from '~/routes/service';
 import { routes } from './api';
 import { o } from './util';
 
-declare module 'koa' {
-  interface ExtendableContext {
-    path: Path;
-    api: ApiRecords[Path];
-    user: Awaited<
-      ReturnType<
-        typeof model.user.add<
-          typeof model.user extends Model<any, {}, infer M> ? M : never
-        >
-      >
-    >;
+declare module 'shared/router' {
+  namespace Router {
+    interface Context<P> extends ParameterizedContext {
+      api: ApiRecords[Path];
+      /**user data from token verification  */
+      user: BTables['user'];
+    }
   }
 }
-export const router = new Router<ApiRecordTypes, ParameterizedContext>({
-  routes,
-  // @ts-ignore
-  createContext: (ctx) => ctx,
-  onNotFound: (ctx) =>
-    Object.assign(
-      o('succ', zocker(ctx.api.out.options[0].shape.data).generate()),
-      { __mock: 1 },
-    ),
-})
+export const router: Router = new Router({ routes })
   .use(function addApiRecord(ctx, next) {
     ctx.api = apiRecords[ctx.path];
     if (!ctx.api) return o('fail', 'api not found');
@@ -47,32 +32,34 @@ export const router = new Router<ApiRecordTypes, ParameterizedContext>({
       return o('fail', 'method not allowed');
     return next();
   })
-  .use(function auth(ctx, next) {
-    if (!ctx.api.meta.token || ctx.user) return next();
-    const token = ctx.req.headers.authorization;
-    if (!token)
-      return o({ code: BizCode.Unauthorizen.value, msg: 'token not found' });
-    return tokenMgr.verify(token).then(
-      async (payload) => {
-        const user = await model.user.findOne(payload);
-        if (!user) return o('fail', '用户不存在');
-        ctx.user = user;
-        return next();
-      },
-      () => o({ code: BizCode.Unauthorizen.value, msg: 'token invalid' }),
-    );
-  })
   .use(
     zodCheck({
       type: 'in',
       onFail: (ctx, reason) => o('fail', JSON.stringify(reason)),
     }),
   )
+  .use(function auth(ctx, next) {
+    if (!ctx.api.meta.token || ctx.user) return next();
+    const token = ctx.req.headers.authorization;
+    if (!token) return o(OutputCode.Unauthorizen.value);
+    return tokenMgr.verify(token).then(
+      async (payload) => {
+        const user = (await db.read('user', payload))[0];
+        if (!user) return o(OutputCode.NoUser.value);
+        ctx.user = user;
+        return next();
+      },
+      () => o(OutputCode.Unauthorizen.value),
+    );
+  })
   .use(
-    b_batch<ParameterizedContext & { input: any }>({
-      createContext: createProxyContext,
-      callRoute: (ctx) => routerMiddle(ctx),
+    b_batch({
+      handle: (ctx) => routerMiddle(ctx),
       onSuccess: (ctx, output) => o('succ', output),
     }),
+  )
+  .mark('handle')
+  .use((ctx) =>
+    Object.assign(o(zocker(ctx.api.out.options[0]).generate()), { __mock: 1 }),
   );
-export const routerMiddle = router.composed;
+export const routerMiddle = router.compose();

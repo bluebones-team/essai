@@ -1,4 +1,4 @@
-import { expect, test, describe } from 'vitest';
+import { expect, test, describe } from 'bun:test';
 import {
   each,
   map,
@@ -14,13 +14,13 @@ import {
 describe('each', () => {
   test('should iterate over an object', () => {
     const obj = { a: 1, b: 2, c: 3 };
-    const result: number[] = [];
+    const result = [];
     each(obj, (v) => result.push(v));
     expect(result).toEqual([1, 2, 3]);
   });
 
   test('should handle an empty object', () => {
-    const result: unknown[] = [];
+    const result = [];
     each({}, (v) => result.push(v));
     expect(result).toEqual([]);
   });
@@ -28,7 +28,7 @@ describe('each', () => {
   test('should handle non-object types', () => {
     const nonObjects = [null, undefined, 123, 'string'];
     nonObjects.forEach((v) => {
-      expect(() => each(v as any, (v) => v)).toThrow();
+      expect(() => each(v, (v) => v)).toThrow();
     });
   });
 });
@@ -61,7 +61,7 @@ describe('map', () => {
   test('should handle non-object types', () => {
     const nonObjects = [null, undefined, 123, 'string'];
     nonObjects.forEach((v) => {
-      expect(() => map(v as any, (v) => v)).toThrow();
+      expect(() => map(v, (v) => v)).toThrow();
     });
   });
 });
@@ -94,7 +94,7 @@ describe('mapValues', () => {
   test('should handle non-object types', () => {
     const nonObjects = [null, undefined, 123, 'string'];
     nonObjects.forEach((v) => {
-      expect(() => mapValues(v as any, (v) => v)).toThrow();
+      expect(() => mapValues(v, (v) => v)).toThrow();
     });
   });
 });
@@ -107,13 +107,13 @@ describe('pick', () => {
   });
 
   test('should handle an empty object', () => {
-    const input: any = {};
+    const input = {};
     const result = pick(input, ['a', 'c']);
     expect(result).toEqual({});
   });
 
   test('should handle non-existent keys', () => {
-    const input: any = { a: 1, b: 2, c: 3 };
+    const input = { a: 1, b: 2, c: 3 };
     const result = pick(input, ['a', 'd']);
     expect(result).toEqual({ a: 1 });
   });
@@ -121,7 +121,7 @@ describe('pick', () => {
   test('should handle non-object types', () => {
     const nonObjects = [null, undefined, 123, 'string'];
     nonObjects.forEach((v) => {
-      expect(() => pick(v as any, ['a', 'c'])).toThrow();
+      expect(() => pick(v, ['a', 'c'])).toThrow();
     });
   });
 });
@@ -149,8 +149,8 @@ describe('isEqualDeep', () => {
   });
 
   test('should handle circular references', () => {
-    const obj1: any = { a: 1, b: { c: 2, d: [3, 4] } };
-    const obj2: any = { a: 1, b: { c: 2, d: [3, 4] } };
+    const obj1 = { a: 1, b: { c: 2, d: [3, 4] } };
+    const obj2 = { a: 1, b: { c: 2, d: [3, 4] } };
     obj1.b.e = obj1;
     obj2.b.e = obj2;
     expect(() => deepIsEqual(obj1, obj2)).toThrow();
@@ -175,7 +175,7 @@ describe('cloneDeep', () => {
   });
 
   test('should handle circular references', () => {
-    const obj1: any = { a: 1, b: { c: 2, d: [3, 4] } };
+    const obj1 = { a: 1, b: { c: 2, d: [3, 4] } };
     obj1.b.e = obj1;
     expect(() => deepClone(obj1)).toThrow();
   });
@@ -190,9 +190,9 @@ describe('cloneDeep', () => {
 
 describe('flow', () => {
   test('should apply functions in order', () => {
-    const add1 = (x: number) => x + 1;
-    const add2 = (x: number) => x + 2;
-    const add3 = (x: number) => x + 3;
+    const add1 = (x) => x + 1;
+    const add2 = (x) => x + 2;
+    const add3 = (x) => x + 3;
     const result = flow(add1, add2, add3)(0);
     expect(result).toBe(6);
   });
@@ -205,7 +205,7 @@ describe('flow', () => {
   test('should handle non-function types', () => {
     const nonFunctions = [null, undefined, 123, 'string'];
     nonFunctions.forEach((v) => {
-      expect(() => flow(v as any)(0)).toThrow();
+      expect(() => flow(v)(0)).toThrow();
     });
   });
 });
@@ -235,7 +235,7 @@ describe('uniqBy', () => {
   test('should handle non-array types', () => {
     const nonArrays = [null, undefined, 123, 'string'];
     nonArrays.forEach((v) => {
-      expect(() => uniqBy(v as any, 'id')).toThrow();
+      expect(() => uniqBy(v, 'id')).toThrow();
     });
   });
 });
@@ -271,7 +271,7 @@ describe('groupBy', () => {
   test('should handle non-array types', () => {
     const nonArrays = [null, undefined, 123, 'string'];
     nonArrays.forEach((v) => {
-      expect(() => groupBy(v as any, 'id')).toThrow();
+      expect(() => groupBy(v, 'id')).toThrow();
     });
   });
 });

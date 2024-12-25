@@ -1,13 +1,13 @@
 import { errorFactory, pick } from 'shared';
 import { computed } from 'vue';
 import type { Primitive } from 'zod';
-import { snackbar } from './state';
 
 export const error = errorFactory({
   console: true,
   debugger: false,
   throw: true,
-  cb(msg) {
+  async cb(msg) {
+    const { snackbar } = await import('./state');
     snackbar.show({ text: msg, color: 'error' });
   },
 });

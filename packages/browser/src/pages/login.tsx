@@ -1,38 +1,30 @@
 import { mdiEyeOffOutline, mdiEyeOutline } from '@mdi/js';
-import { account } from 'shared/router';
-import { progress, type Input } from 'shared/router';
-import { CardType } from 'shared/data';
 import { toFieldRules } from 'shared';
-import { user } from 'shared/data';
+import { apiRecords, progress, type In } from 'shared/router';
 import { defineComponent, reactive, ref, shallowRef } from 'vue';
 import { VMain } from 'vuetify/components/VMain';
-import { VSelect } from 'vuetify/components/VSelect';
 import { VTab, VTabs } from 'vuetify/components/VTabs';
 import { VTextField } from 'vuetify/components/VTextField';
 import { Container } from '~/components/container';
-import { DialogForm } from '~/components/dialog-form';
 import { Form } from '~/components/form';
 import { OtpInput } from '~/components/forms/otp-input';
 import { c } from '~/ts/client';
-import { usePopup } from '~/ts/hook';
 import { snackbar, storage, udata } from '~/ts/state';
-import { error } from '~/ts/util';
 
 const PwdInput = defineComponent(() => {
   const loading = ref(false);
   const showPwd = ref(false);
-  const pwd_data = reactive<Input['/login/pwd']>({ phone: '', pwd: '' });
-  const pwd_validator = toFieldRules(account['/login/pwd'].in);
+  const pwd_data = reactive<In['/login/pwd']>({ phone: '', pwd: '' });
+  const pwd_validator = toFieldRules(apiRecords['/login/pwd'].in);
   return () => (
     <Form
-      size="small"
       actions={[
         {
           text: '登录',
           type: 'submit',
           variant: 'flat',
-          loading: loading.value,
           block: true,
+          loading: loading.value,
         },
       ]}
       onPass={() => {
@@ -69,14 +61,8 @@ const PwdInput = defineComponent(() => {
                     showPwd.value = !showPwd.value;
                   }}
                   {...(showPwd.value
-                    ? {
-                        type: 'text',
-                        appendInnerIcon: mdiEyeOffOutline,
-                      }
-                    : {
-                        type: 'password',
-                        appendInnerIcon: mdiEyeOutline,
-                      })}
+                    ? { type: 'text', appendInnerIcon: mdiEyeOffOutline }
+                    : { type: 'password', appendInnerIcon: mdiEyeOutline })}
                 />
               ),
             },
@@ -86,78 +72,94 @@ const PwdInput = defineComponent(() => {
     </Form>
   );
 });
-const _OtpInput = () => <OtpInput onPass:code={() => realname_dialog.show()} />;
-const RealnameInput = defineComponent(() => {
-  const realname_data = reactive<User.Auth>({
-    type: CardType.IDCard.value,
-    name: '',
-    num: '',
-  });
-  const realname_validator = toFieldRules(user.auth);
-  return () => (
-    <Container
-      display={[
-        [
-          {
-            comp: () => (
-              <VTextField
-                v-model={realname_data.name}
-                label="真实姓名"
-                rules={realname_validator.name}
-              />
-            ),
-          },
-          {
-            cols: 12,
-            comp: () => (
-              <VSelect
-                v-model={realname_data.type}
-                label="证件类型"
-                rules={realname_validator.type}
-                items={CardType.items}
-              />
-            ),
-          },
-          {
-            comp: () => (
-              <VTextField
-                v-model={realname_data.num}
-                label="证件号"
-                rules={realname_validator.num}
-              />
-            ),
-          },
-        ],
-      ]}
-    />
-  );
-});
+const _OtpInput = () => (
+  <OtpInput
+    onPass={(data, state) => {
+      c['/login/phone'].with(progress(state, 'loading')).send(data, {
+        0(res) {
+          snackbar.show({ text: '验证通过', color: 'success' });
+          storage.setToken(res.data);
+          udata.value = res.data;
+        },
+        1(res) {},
+      });
+    }}
+  />
+);
+// const RealnameInput = defineComponent(() => {
+//   const realname_data = reactive<User.Auth>({
+//     type: CardType.IDCard.value,
+//     name: '',
+//     num: '',
+//   });
+//   const realname_validator = toFieldRules(user.auth);
+//   return () => (
+//     <Container
+//       display={[
+//         [
+//           {
+//             comp: () => (
+//               <VTextField
+//                 v-model={realname_data.name}
+//                 label="真实姓名"
+//                 rules={realname_validator.name}
+//               />
+//             ),
+//           },
+//           {
+//             cols: 12,
+//             comp: () => (
+//               <VSelect
+//                 v-model={realname_data.type}
+//                 label="证件类型"
+//                 rules={realname_validator.type}
+//                 items={CardType.items}
+//               />
+//             ),
+//           },
+//           {
+//             comp: () => (
+//               <VTextField
+//                 v-model={realname_data.num}
+//                 label="证件号"
+//                 rules={realname_validator.num}
+//               />
+//             ),
+//           },
+//         ],
+//       ]}
+//     />
+//   );
+// });
 
-const realname_dialog = usePopup(DialogForm, () => ({
-  card: { title: '实名认证', subtitle: '本站实施全面后台实名' },
-  content: RealnameInput,
-  onPass: () => error('提交实名认证'),
-}));
+// const realname_dialog = usePopup(DialogForm, () => ({
+//   card: { title: '实名认证', subtitle: '本站实施全面后台实名' },
+//   content: RealnameInput,
+//   onPass: () => error('提交实名认证'),
+// }));
+const comps = [
+  { text: '密码', comp: PwdInput },
+  { text: '短信', comp: _OtpInput },
+];
 
 export const route: LooseRouteRecord = {};
 export default defineComponent({
   name: 'Login',
-  //@ts-ignore
   beforeRouteEnter(to, from) {
-    return !udata.value || to.query.redirect || '/';
+    const { redirect } = to.query;
+    return !udata.value || (typeof redirect === 'string' ? redirect : '/');
   },
   setup() {
-    const comp = shallowRef(PwdInput);
+    const currentIdx = shallowRef(0);
     return () => (
       <VMain>
         <div class="center d-flex flex-column">
-          <comp.value />
-          <VTabs v-model={comp.value}>
-            {[
-              { text: '密码', value: PwdInput },
-              { text: '短信', value: _OtpInput },
-            ].map((p) => (
-              <VTab {...p} />
+          {comps.map((p, i) => (
+            <p.comp v-show={currentIdx.value === i} key={p.text} />
+          ))}
+          <VTabs v-model={currentIdx.value}>
+            {comps.map((p, i) => (
+              <VTab text={p.text} value={i} />
             ))}
           </VTabs>
         </div>

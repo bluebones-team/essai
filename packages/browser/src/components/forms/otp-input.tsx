@@ -1,15 +1,14 @@
-import { account } from 'shared/router';
-import { once, progress, type Input } from 'shared/router';
 import { toFieldRules } from 'shared';
+import { apiRecords, progress, type In } from 'shared/router';
 import { defineComponent, reactive, ref } from 'vue';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VTextField } from 'vuetify/components/VTextField';
 import { Container, type ContainerDisplay } from '~/components/container';
 import { Form } from '~/components/form';
 import { c } from '~/ts/client';
-import { snackbar, storage } from '~/ts/state';
+import { snackbar } from '~/ts/state';
 
-const data = reactive({ phone: '', code: '' }) satisfies Input['/login/otp'];
+const data = reactive({ phone: '', code: '' }) satisfies In['/login/phone'];
 const timer = {
   time: ref(0),
   countdowm(time: number) {
@@ -25,43 +24,19 @@ const timer = {
 };
 const sendState = reactive({ loading: false, disabled: false });
 const submitState = reactive({ loading: false, disabled: false });
-const onceDecorator = once();
 
-/**检查是否发送验证码 */
-function checkSend() {
-  return data.phone || snackbar.show({ text: '请输入手机号', color: 'error' });
-}
-/**行为验证 */
-function checkHuman() {
-  console.warn('行为验证未实现');
-  return true;
-}
-/**发送验证码 */
 function send() {
-  if (!(checkSend() && checkHuman())) return;
-  c['/usr/phone/otp']
-    .with(progress(sendState, 'loading'))
-    .with(onceDecorator)
-    .send(data.phone, {
-      0() {
-        timer.countdowm(60);
-      },
-    });
+  if (!data.phone)
+    return snackbar.show({ text: '请输入手机号', color: 'error' });
+  console.warn('行为验证未实现');
+  c['/otp/phone'].with(progress(sendState, 'loading')).send(data.phone, {
+    0() {
+      timer.countdowm(60);
+    },
+  });
 }
-/**提交验证码 */
-function submit(callback: (d: typeof data) => void) {
-  c['/login/otp']
-    .with(progress(submitState, 'loading'))
-    .with(onceDecorator)
-    .send(data, {
-      0(res) {
-        snackbar.show({ text: '验证通过', color: 'success' });
-        storage.setToken(res.data);
-        callback(data);
-      },
-    });
-}
-const rules = toFieldRules(account['/login/otp'].in);
+
+const rules = toFieldRules(apiRecords['/login/phone'].in);
 const display: ContainerDisplay = [
   [
     {
@@ -105,11 +80,10 @@ const display: ContainerDisplay = [
   ],
 ];
 export const OtpInput = defineComponent(function (props: {
-  'onPass:code': Parameters<typeof submit>[0];
+  onPass(_data: typeof data, state: typeof submitState): void;
 }) {
   return () => (
     <Form
-      size="small"
       actions={[
         {
           text: '验证',
@@ -119,7 +93,7 @@ export const OtpInput = defineComponent(function (props: {
           ...submitState,
         },
       ]}
-      onPass={() => submit(props['onPass:code'])}
+      onPass={() => props['onPass'](data, submitState)}
     >
       <Container display={display} />
     </Form>

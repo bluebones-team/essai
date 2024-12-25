@@ -1,5 +1,5 @@
 import { mdiMagnify, mdiTune } from '@mdi/js';
-import { ProjectType, RecruitmentType } from 'shared/data';
+import { ExperimentType, RecruitmentType } from 'shared/data';
 import { defineComponent, useModel } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VIcon } from 'vuetify/components/VIcon';
@@ -45,10 +45,16 @@ export const SimpleFilter = defineComponent(
 );
 export const AdvancedFilter = defineComponent(
   (
-    p: { range: Filter.Range } & {
-      modelValue?: RequiredByKey<Filter.Data, keyof Filter.Range>;
+    p: { range: FTables['experiment']['filter']['range'] } & {
+      modelValue?: RequiredByKey<
+        FTables['experiment']['filter']['data'],
+        keyof FTables['experiment']['filter']['range']
+      >;
       'onUpdate:modelValue'?: (
-        value: RequiredByKey<Filter.Data, keyof Filter.Range>,
+        value: RequiredByKey<
+          FTables['experiment']['filter']['data'],
+          keyof FTables['experiment']['filter']['range']
+        >,
       ) => void;
     },
   ) => {
@@ -69,7 +75,7 @@ export const AdvancedFilter = defineComponent(
         },
         ...(
           [
-            ['项目类型', 'type', ProjectType.items],
+            ['项目类型', 'type', ExperimentType.items],
             ['招募类型', 'rtype', RecruitmentType.items],
           ] as const
         ).map(([label, key, items]) => ({

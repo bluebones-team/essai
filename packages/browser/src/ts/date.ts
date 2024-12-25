@@ -11,7 +11,7 @@ const parse = (date: Date) => ({
 });
 /**格式化时间 */
 export function dateFormat(
-  date: Date | Shared.Timestamp,
+  date: Date | Shared['timestamp'],
   format = 'YYYY/MM/DD',
 ) {
   if (typeof date === 'number') {

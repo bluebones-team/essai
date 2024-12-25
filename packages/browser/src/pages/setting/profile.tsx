@@ -4,11 +4,9 @@ import {
   mdiLogout,
   mdiSquareEditOutline,
 } from '@mdi/js';
-import { usr } from 'shared/router';
-import { progress, type Input } from 'shared/router';
+import { pick, toFieldRules } from 'shared';
 import { Gender } from 'shared/data';
-import { toFieldRules } from 'shared';
-import { pick } from 'shared';
+import { apiRecords, progress, type In } from 'shared/router';
 import {
   computed,
   defineAsyncComponent,
@@ -29,9 +27,9 @@ import { usePopup } from '~/ts/hook';
 import { storage, udata } from '~/ts/state';
 import { error } from '~/ts/util';
 
-const rules = toFieldRules(usr['/usr/edit'].in);
+const rules = toFieldRules(apiRecords['/usr/edit'].in);
 /**编辑框 */
-function editInput(data: Input['/usr/edit']) {
+function editInput(data: In['/usr/edit']) {
   const { promise, resolve } = Promise.withResolvers<string[]>();
   // c['/usr/face/list'].send(void 0,{
   //   0: (res) => resolve(res.data),
@@ -98,7 +96,7 @@ function deleteUserBtn() {
         color: 'error',
         loading: loading.value,
         onClick() {
-          c['/logout'].with(progress(loading, 'value')).send(void 0, {
+          c['/signoff'].with(progress(loading, 'value')).send(void 0, {
             0() {
               udata.value = void 0;
               storage.removeToken();
@@ -121,13 +119,9 @@ function logoutBtn() {
         color: 'error',
         loading: loading.value,
         onClick() {
-          c['/logout'].with(progress(loading, 'value')).send(void 0, {
-            0() {
-              udata.value = void 0;
-              storage.removeToken();
-              location.href = '/';
-            },
-          });
+          udata.value = void 0;
+          storage.removeToken();
+          location.href = '/';
         },
       }}
     />
@@ -181,11 +175,11 @@ export default defineComponent(
         {
           title: '身份认证',
           items: [
-            {
-              title: '实名认证',
-              subtitle: udata.value.auth.realname ?? '未实名',
-              horizontal: true,
-            },
+            // {
+            //   title: '实名认证',
+            //   subtitle: udata.value.auth.realname ?? '未实名',
+            //   horizontal: true,
+            // },
             {
               title: '招募者认证',
               subtitle: udata.value.emails[0],

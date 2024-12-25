@@ -1,14 +1,15 @@
 import { mdiArrowLeft } from '@mdi/js';
 import { toFieldRules } from 'shared';
-import { project, ProjectType, RecruitmentType } from 'shared/data';
 import {
-  computed,
-  defineComponent,
-  inject,
-  reactive,
-  useAttrs,
-  useModel,
-} from 'vue';
+  experiment,
+  ExperimentType,
+  recruitment,
+  recruitment_condition,
+  RecruitmentType,
+  shared,
+  type ExperimentDataType,
+} from 'shared/data';
+import { computed, defineComponent, reactive, useAttrs, useModel } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VSpacer } from 'vuetify/components/VGrid';
@@ -17,19 +18,19 @@ import { VTextField } from 'vuetify/components/VTextField';
 import { VTextarea } from 'vuetify/components/VTextarea';
 import { VToolbar, VToolbarTitle } from 'vuetify/components/VToolbar';
 import { VScrollYReverseTransition } from 'vuetify/components/transitions';
-import { VDateInput } from 'vuetify/labs/VDateInput';
 import { Container, type ContainerDisplay } from '~/components/container';
 import { Form } from '~/components/form';
 import { Section } from '~/components/section';
-import { injection } from '~/ts/state';
-import { checkModel, toComputed } from '~/ts/util';
+import { checkModel } from '~/ts/util';
 
-const projectValid = toFieldRules(project.public.data);
-const contentValid = toFieldRules(project.recruitment.shape.contents.element);
-const recruitmentValid = toFieldRules(project.recruitment);
-const positionValid = toFieldRules(project.public.data.shape.position);
+const expValid = toFieldRules(experiment.front.public.data);
+const recruitmentConditionValid = toFieldRules(recruitment_condition.front);
+const recruitmentValid = toFieldRules(recruitment.front);
+const positionValid = toFieldRules(shared.position);
 
-function useBaseDisplay(data: Project['Data']): ContainerDisplay {
+function useBaseDisplay(
+  data: FTables['experiment'][ExperimentDataType]['data'],
+): ContainerDisplay {
   const { xs } = useDisplay();
   return [
     [
@@ -40,7 +41,7 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
             v-model={data.title}
             label="项目名称"
             maxlength="20"
-            rules={projectValid.title}
+            rules={expValid.title}
             counter
           />
         ),
@@ -50,15 +51,15 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
           <VSelect
             v-model={data.type}
             label="类型"
-            items={ProjectType.items.map((e) => ({
+            items={ExperimentType.items.map((e) => ({
               title: e.name,
               subtitle: e.title,
               value: e.value,
             }))}
             itemProps
-            rules={projectValid.type}
+            rules={expValid.type}
             persistentHint
-            hint={ProjectType[data.type].title}
+            hint={ExperimentType[data.type].title}
           />
         ),
       },
@@ -91,11 +92,11 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
         cols: 12,
         comp: () => (
           <VTextarea
-            v-model={data.desc}
+            v-model={data.notice}
             label="项目介绍"
             maxlength={100}
             rows={3}
-            rules={projectValid.desc}
+            rules={expValid.notice}
             autoGrow
             counter
           />
@@ -104,35 +105,37 @@ function useBaseDisplay(data: Project['Data']): ContainerDisplay {
     ],
   ];
 }
-function useEventDisplay(events: Project['Data']['events']): ContainerDisplay {
-  const editable = toComputed(inject(injection.editable, true));
-  const event = events[0];
-  const { xs } = useDisplay();
-  return [
-    [
-      {
-        cols: () => (xs.value ? 12 : 6),
-        comp: () => (
-          <VDateInput
-            v-model={event[0]}
-            label="开始日期"
-            readonly={!editable.value}
-          />
-        ),
-      },
-      {
-        comp: () => (
-          <VDateInput
-            v-model={event[1]}
-            label="结束日期"
-            readonly={!editable.value}
-          />
-        ),
-      },
-    ],
-  ];
-}
-function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
+// function useEventDisplay(
+//   events: FTables['experiment'][ExperimentDataType]['data']['events'],
+// ): ContainerDisplay {
+//   const editable = toComputed(inject(injection.editable, true));
+//   const event = events[0];
+//   const { xs } = useDisplay();
+//   return [
+//     [
+//       {
+//         cols: () => (xs.value ? 12 : 6),
+//         comp: () => (
+//           <VDateInput
+//             v-model={event[0]}
+//             label="开始日期"
+//             readonly={!editable.value}
+//           />
+//         ),
+//       },
+//       {
+//         comp: () => (
+//           <VDateInput
+//             v-model={event[1]}
+//             label="结束日期"
+//             readonly={!editable.value}
+//           />
+//         ),
+//       },
+//     ],
+//   ];
+// }
+function useRecruitmentDisplay<T extends FTables['recruitment'][]>(
   recruitments: T,
   type: RecruitmentType,
 ): ContainerDisplay {
@@ -145,10 +148,10 @@ function useRecruitmentDisplay<T extends Project['Data']['recruitments']>(
         cols: () => (xs.value ? 6 : 4),
         comp: () => (
           <VTextField
-            v-model={data.contents[0]['total']}
+            v-model={data.conditions[0]['size']}
             label="招募人数"
             type="number"
-            rules={contentValid.total}
+            rules={recruitmentConditionValid.size}
           />
         ),
       },
@@ -251,11 +254,13 @@ export const ProjectInfo = defineComponent(function (
   p: {
     actions?: Props<VBtn>[];
     onBack?(): void;
-    onSave?(data: Project['Data']): void;
-    onPublish?(data: Project['Data']): void;
+    onSave?(data: FTables['experiment'][ExperimentDataType]['data']): void;
+    onPublish?(data: FTables['experiment'][ExperimentDataType]['data']): void;
   } & {
-    modelValue?: Project['Data'];
-    'onUpdate:modelValue'?: (value: Project['Data']) => void;
+    modelValue?: FTables['experiment'][ExperimentDataType]['data'];
+    'onUpdate:modelValue'?: (
+      value: FTables['experiment'][ExperimentDataType]['data'],
+    ) => void;
   } & {
     isPasses?: boolean[];
     'onUpdate:isPasses'?: (value: boolean[]) => void;
@@ -268,10 +273,10 @@ export const ProjectInfo = defineComponent(function (
     isPass: useModel(p, 'isPasses', { get: (v) => v ?? [] }),
     panels: computed(() => [
       { title: '基本', display: useBaseDisplay(model.value) },
-      {
-        title: '日程',
-        display: useEventDisplay(model.value.events),
-      },
+      // {
+      //   title: '日程',
+      //   display: useEventDisplay(model.value.events),
+      // },O
       ...model.value.recruitments.map((e, i, arr) => ({
         title: i ? '' : '招募',
         subtitle: RecruitmentType[e.rtype].title,

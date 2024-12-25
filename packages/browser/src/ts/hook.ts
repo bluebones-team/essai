@@ -6,7 +6,12 @@ import {
   pick,
   uniqBy,
 } from 'shared';
-import { ProjectState, RecruitmentType, Theme } from 'shared/data';
+import {
+  ExperimentState,
+  RecruitmentType,
+  Theme,
+  type ExperimentDataType,
+} from 'shared/data';
 import { progress } from 'shared/router';
 import {
   computed,
@@ -141,17 +146,17 @@ export function useDefaults<T extends LooseObject, D extends Partial<T>>(
 }
 
 //data
-export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
+export function useExp<T extends ExperimentDataType>(type: T) {
   const state = reactive({
-    list: [] as Project[T]['Preview'][],
-    preview: null as Project[T]['Preview'] | null,
-    data: null as Project[T]['Data'] | null,
+    list: [] as FTables['experiment'][T]['preview'][],
+    preview: null as FTables['experiment'][T]['preview'] | null,
+    data: null as FTables['experiment'][T]['data'] | null,
     page: { ps: 20, pn: 1 },
   });
   watchEffect(() => {
     if (!state.preview) return;
-    c[`/proj/${type}/sup`].with(progress(showProgressbar, 'value')).send(
-      { pid: state.preview.pid },
+    c[`/exp/${type}/sup`].with(progress(showProgressbar, 'value')).send(
+      { eid: state.preview.eid },
       {
         //@ts-ignore
         0(res) {
@@ -169,39 +174,39 @@ export function useProj<T extends 'public' | 'joined' | 'own'>(type: T) {
     );
   });
   function fetchList(
-    filterData: Filter.Data = { rtype: RecruitmentType.Subject.value },
+    filterData: FTables['experiment']['filter']['data'] = {
+      rtype: RecruitmentType.Subject.value,
+    },
   ) {
-    return c[`/proj/${type}/list`]
-      .with(progress(showProgressbar, 'value'))
-      .send(
-        { ...state.page, filter: filterData },
-        {
-          //@ts-ignore
-          0(res) {
-            state.list = res.data;
-          },
+    return c[`/exp/${type}/list`].with(progress(showProgressbar, 'value')).send(
+      { ...state.page, filter: filterData },
+      {
+        //@ts-ignore
+        0(res) {
+          state.list = res.data;
         },
-      );
+      },
+    );
   }
   return {
     state,
     fetchList,
   };
 }
-export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
+export function useExpFilter<T extends ExperimentDataType>(type: T) {
   const toDefaultRange = () =>
     ({
       duration_range: [0, 100],
       times_range: [0, 100],
       fee_range: [0, 100],
-    }) as Filter.Range;
+    }) as FTables['experiment']['filter']['range'];
   const state = reactive({
     range: toDefaultRange(),
     data: {
       rtype: RecruitmentType.Subject.value,
-      state: ProjectState.Passed.value,
+      state: ExperimentState.Passed.value,
       ...toDefaultRange(),
-    } as RequiredByKey<Filter.Data, 'state'>,
+    } as RequiredByKey<FTables['experiment']['filter']['data'], 'state'>,
   });
   function fetchRange() {
     if (type !== 'public') {
@@ -211,7 +216,7 @@ export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
       });
       return;
     }
-    return c[`/proj/${'public'}/range`]
+    return c[`/exp/${'public'}/range`]
       .with(progress(showProgressbar, 'value'))
       .send(void 0, {
         0(res) {
@@ -226,62 +231,66 @@ export function useFilter<T extends 'public' | 'joined' | 'own'>(type: T) {
     fetchRange,
   };
 }
-export function usePtc(proj: Ref<Project['Preview'] | null>) {
+export function useRecruitPtc(
+  exp: Ref<FTables['experiment'][ExperimentDataType]['preview'] | null>,
+) {
   const state = reactive({
-    list: [] as Participant.Join[],
+    list: [] as FTables['recruitment_participant'][],
     rtype: RecruitmentType.Subject.value as RecruitmentType,
-    selected: null as Participant.Join | null,
+    selected: null as FTables['recruitment_participant'] | null,
     page: { ps: 20, pn: 1 },
   });
   watchEffect(() => {
     state.selected = state.list && null;
   });
   function fetchList() {
-    if (!proj.value)
+    if (!exp.value)
       return snackbar.show({ text: '请选择项目', color: 'error' });
-    return c['/ptc/list'].with(progress(showProgressbar, 'value')).send(
-      {
-        ...state.page,
-        filter: { rtype: state.rtype },
-        pid: proj.value.pid,
-      },
-      {
-        0(res) {
-          state.list = res.data;
+    return c['/exp/recruit/ptc/list']
+      .with(progress(showProgressbar, 'value'))
+      .send(
+        {
+          ...state.page,
+          filter: { rtype: state.rtype },
+          eid: exp.value.eid,
         },
-      },
-    );
+        {
+          0(res) {
+            state.list = res.data;
+          },
+        },
+      );
   }
   return {
     state,
     fetchList,
   };
 }
-export function useProjData<T extends 'public' | 'joined' | 'own'>(type: T) {
-  const proj = useProj(type);
-  const filter = useFilter(type);
-  const ptc = usePtc(toRef(proj.state, 'preview'));
+export function useExpData<T extends ExperimentDataType>(type: T) {
+  const exp = useExp(type);
+  const filter = useExpFilter(type);
+  const ptc = useRecruitPtc(toRef(exp.state, 'preview'));
   return {
-    proj: proj.state,
-    fetchProjList: proj.fetchList,
+    proj: exp.state,
+    fetchExpList: exp.fetchList,
     filter: filter.state,
-    fetchProjRange: filter.fetchRange,
+    fetchExpRange: filter.fetchRange,
     simpleSearch: () =>
-      proj.fetchList(pick(filter.state.data, ['search', 'rtype'])),
-    advancedSearch: () => proj.fetchList(filter.state.data),
+      exp.fetchList(pick(filter.state.data, ['search', 'rtype'])),
+    advancedSearch: () => exp.fetchList(filter.state.data),
     ptc: ptc.state,
     fetchPtcList: ptc.fetchList,
   };
 }
-export function useLib() {
+export function useUserPtc() {
   const state = reactive({
-    list: [] as Participant.Lib[],
-    selected: [] as Participant.Lib[],
+    list: [] as FTables['user_participant'][],
+    selected: [] as FTables['user_participant'][],
     rtype: RecruitmentType.Subject.value as RecruitmentType,
     page: { ps: 20, pn: 1 },
   });
   function fetchList() {
-    return c['/lib/list'].with(progress(showProgressbar, 'value')).send(
+    return c['/usr/ptc/list'].with(progress(showProgressbar, 'value')).send(
       { ...state.page, filter: { rtype: state.rtype } },
       {
         0(res) {

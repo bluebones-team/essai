@@ -21,7 +21,7 @@ export function errorFactory<T extends boolean = true>(opts: {
 }
 export const error = errorFactory({
   console: true,
-  debugger: true,
+  debugger: false,
   throw: true,
 });
 
@@ -206,10 +206,8 @@ export class Onion<T extends {}, K extends string = string> {
     this.middles = [...middles];
   }
   /**add middle for onion */
-  use(middle: Middle<T>, id?: K | string | number) {
-    typeof id === 'undefined'
-      ? this.middles.push(middle)
-      : this.middles.splice(this.find(id), 0, middle);
+  use(middle: Middle<T>) {
+    this.middles.push(middle);
     return this;
   }
   /**add marker for onion */
@@ -217,17 +215,14 @@ export class Onion<T extends {}, K extends string = string> {
     this.markers[name] = this.middles.length;
     return this;
   }
-  private find(id: K | string | number) {
+  findIndex(id: K | string) {
     const index =
-      typeof id === 'number'
-        ? id
-        : (this.middles.findIndex((e) => e.name === id) ??
-          this.markers[id as K]);
+      this.markers[id as K] ?? this.middles.findIndex((e) => e.name === id);
     if (index === -1) error(`Middle not found: ${id}`);
     return index;
   }
   /**@see https://github.com/koajs/compose/blob/master/index.js */
-  get composed(): ComposedMiddle<T> {
+  compose(): ComposedMiddle<T> {
     return (ctx, next, start = 0) => {
       const dispatch = (index: number) => {
         if (index === this.middles.length) return next?.();
@@ -239,7 +234,9 @@ export class Onion<T extends {}, K extends string = string> {
           console.error(`middle error: ${middle.name}`, err);
         }
       };
-      return dispatch(this.find(start));
+      return dispatch(
+        typeof start === 'number' ? start : this.findIndex(start),
+      );
     };
   }
 }

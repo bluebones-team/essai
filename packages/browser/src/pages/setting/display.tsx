@@ -49,7 +49,7 @@ const ThemePanel = defineComponent(() => {
 const RolePanel = defineComponent(() => {
   const theme = useTheme();
   return () =>
-    udata.value?.auth.recruiter ? (
+    udata.value?.recruiter ? (
       <ItemGroup
         v-model={setting.display.role}
         class="d-grid ga-4"

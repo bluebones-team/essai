@@ -17,8 +17,6 @@ const client = new AliyunClient(
 );
 
 export const sms = {
-  /**OTP code expiration time in seconds */
-  OTP_EX: 60 as const,
   /**@todo: implement SMS sending */
   async send(phone: string, code: string) {
     return true;

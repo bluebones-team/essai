@@ -2,7 +2,7 @@ import type { Middleware } from 'koa';
 import pinoLogger from 'koa-pino-logger';
 import type { PrettyOptions } from 'pino-pretty';
 import { env, pick } from 'shared';
-import { a_json, b_json } from 'shared/middle';
+import { a_json, b_json } from 'shared/router';
 
 /**@see https://github.com/pinojs/pino/blob/main/docs/api.md#options */
 export const log = pinoLogger({

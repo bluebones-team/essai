@@ -7,5 +7,5 @@ export const setting = reactive({
 export const curTabbar = ref<Tabbar>(Tabbar.user.value);
 watchEffect(() => {
   console.log(curTabbar.value);
-  wx.switchTab({ url: `/pages/${Tabbar[curTabbar.value]._name}/index` });
+  wx.switchTab({ url: `/pages/${Tabbar[curTabbar.value].name}/index` });
 });

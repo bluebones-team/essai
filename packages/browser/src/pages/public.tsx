@@ -1,5 +1,5 @@
 import { mdiAccountPlusOutline } from '@mdi/js';
-import { ProjectType, RecruitmentType, Role } from 'shared/data';
+import { ExperimentType, RecruitmentType, Role } from 'shared/data';
 import { computed, defineComponent, provide, watchEffect } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
@@ -11,29 +11,31 @@ import { AdvancedFilter, SimpleFilter } from '~/components/proj-filter';
 import { ProjectInfo } from '~/components/proj-info';
 import { Table, type TableHeader } from '~/components/table';
 import { c } from '~/ts//client';
-import { usePopup, useProjData } from '~/ts/hook';
+import { usePopup, useExpData } from '~/ts/hook';
 import { injection, snackbar } from '~/ts/state';
 
 const {
   proj,
-  fetchProjList,
+  fetchExpList: fetchProjList,
   filter,
-  fetchProjRange,
+  fetchExpRange: fetchProjRange,
   simpleSearch,
   advancedSearch,
-} = useProjData('public');
+} = useExpData('public');
 
 const _Table = defineComponent(() => {
   const { mobile, xs } = useDisplay();
-  const mobileHeaders: TableHeader<Project['public']['Preview']>[] = [
+  const mobileHeaders: TableHeader<
+    FTables['experiment']['public']['preview']
+  >[] = [
     { title: '标题', key: 'title', maxWidth: '20rem' },
     {
       title: '类型',
       key: 'type',
       // width: '6rem',
       value: (item) => (
-        <VChip key={item.type} color={ProjectType[item.type].color}>
-          {ProjectType[item.type].name}
+        <VChip key={item.type} color={ExperimentType[item.type].color}>
+          {ExperimentType[item.type].name}
         </VChip>
       ),
       //@ts-ignore
@@ -99,22 +101,18 @@ const _Join = defineComponent(() => {
     const d = proj.data?.recruitments;
     return d?.length ? d : snackbar.show({ text: '该项目无招募信息' });
   });
-  function join(rtype: RecruitmentType, starts?: Shared.Timestamp[]) {
+  function join(rtype: RecruitmentType, starts?: Shared['timestamp'][]) {
     if (starts instanceof Event) starts = void 0;
     const data = proj.data;
     if (!data) return;
-    if (data.recruitments[rtype]?.should_select_event) {
-      snackbar.show({ text: '暂不支持该功能', color: 'info' });
-    } else {
-      c['/proj/join'].send(
-        { pid: data.pid, rtype, starts },
-        {
-          0(res) {
-            snackbar.show({ text: '报名成功', color: 'success' });
-          },
+    c['/exp/join'].send(
+      { eid: data.eid, rtype },
+      {
+        0(res) {
+          snackbar.show({ text: '报名成功', color: 'success' });
         },
-      );
-    }
+      },
+    );
   }
   return () => (
     <div class="center">

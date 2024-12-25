@@ -6,8 +6,8 @@ import {
 } from '@mdi/js';
 import {
   Gender,
-  ProjectState,
-  ProjectType,
+  ExperimentState,
+  ExperimentType,
   RecruitmentType,
   Role,
 } from 'shared/data';
@@ -24,11 +24,11 @@ import { Dialog } from '~/components/dialog';
 import { Table } from '~/components/table';
 import { c } from '~/ts/client';
 import { birth_age } from 'shared/data';
-import { useLib, usePopup, useProj } from '~/ts/hook';
+import { useUserPtc, usePopup, useExp } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
 
-const { state: proj, fetchList: fetchProjList } = useProj('own');
-const { state: lib, fetchList: fetchLibList } = useLib();
+const { state: proj, fetchList: fetchProjList } = useExp('own');
+const { state: lib, fetchList: fetchLibList } = useUserPtc();
 
 const _Table = () => (
   <Table
@@ -40,8 +40,8 @@ const _Table = () => (
         title: '类型',
         key: 'type',
         value: (item) => (
-          <VChip color={ProjectType[item.type].color}>
-            {ProjectType[item.type].name}
+          <VChip color={ExperimentType[item.type].color}>
+            {ExperimentType[item.type].name}
           </VChip>
         ),
       },
@@ -90,7 +90,7 @@ const _LibTable = defineComponent(() => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                c['/lib/remove'].send(
+                c['/usr/ptc/remove'].send(
                   { rtype: lib.rtype, uid: item.uid },
                   {
                     0(res) {
@@ -139,9 +139,9 @@ const _LibFab = () => (
       if (!proj.preview) return snackbar.show({ text: '请选择要推送的项目' });
       if (!lib.selected.length)
         return snackbar.show({ text: '请选择要推送的参与者' });
-      c['/lib/push'].send(
+      c['/exp/push'].send(
         {
-          pid: proj.preview.pid,
+          eid: proj.preview.eid,
           rtype: lib.rtype,
           uids: lib.selected.map((e) => e.uid),
         },
@@ -186,7 +186,7 @@ export default defineComponent({
   name: 'Push',
   beforeRouteEnter(to, from, next) {
     Promise.allSettled([
-      fetchProjList({ state: ProjectState.Passed.value }),
+      fetchProjList({ state: ExperimentState.Passed.value }),
       fetchLibList(),
     ]).finally(next);
   },

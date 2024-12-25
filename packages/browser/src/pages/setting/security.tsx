@@ -3,8 +3,7 @@ import {
   mdiShieldCheckOutline,
   mdiSquareEditOutline,
 } from '@mdi/js';
-import { usr } from 'shared/router';
-import { progress } from 'shared/router';
+import { apiRecords, progress } from 'shared/router';
 import { toFieldRules } from 'shared';
 import { computed, defineComponent, reactive, ref } from 'vue';
 import { useDisplay } from 'vuetify';
@@ -18,7 +17,7 @@ import { SectionGroup } from '~/components/section-group';
 import { c } from '~/ts//client';
 import { udata } from '~/ts/state';
 
-const rules = toFieldRules(usr['/usr/pwd/edit'].in);
+const rules = toFieldRules(apiRecords['/usr/pwd/edit'].in);
 /**更改密码 */
 function passwordEditInput() {
   const loading = ref(false);
@@ -68,7 +67,7 @@ function passwordEditInput() {
 }
 /**更改手机号 */
 function phoneEditInput() {
-  return () => <OtpInput onPass:code={(data) => {}} />;
+  return () => <OtpInput onPass={(data) => {}} />;
 }
 
 export const route: LooseRouteRecord = {

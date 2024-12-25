@@ -7,28 +7,25 @@ const envVersion = accountInfo.miniProgram.envVersion;
 const host = getApiURL(envVersion === 'develop');
 const wsHost = getApiURL(envVersion === 'develop', 'ws');
 export const c = createClient({
-  send(d) {
-    const type = d.meta.type;
+  send(ctx) {
+    const meta = ctx.api.meta;
+    const { type } = meta;
     if (type === 'ws') return;
-    fetch(`${host}/${d.path}`, {
+    fetch(`${host}/${ctx.path}`, {
       method: type,
       headers: {
-        Authorization: d.token,
+        Authorization: meta.token && wx.getStorageSync(meta.token),
         // 'Content-Type': 'application/json',
       },
-      body: JSON.stringify(d.data),
+      body: ctx.input as string,
+      signal: ctx.signal,
     })
       .then((r) => r.json())
-      .then(d.onData, d.onError);
+      .then(ctx.onData, ctx.onError);
   },
-  error: console.error,
-  showTip: (e) =>
-    wx.showToast({
-      title: e.text,
-      icon: e.color === 'success' ? 'success' : 'none',
-    }),
-  token: {
-    get: (k) => wx.getStorageSync(k),
-    set: (d) => each(d, (v, k) => wx.setStorageSync(k, v)),
+  error(msg, ...e) {
+    wx.showToast({ title: msg, icon: 'error' });
+    console.error(e);
   },
+  setToken: (d) => each(d, (v, k) => wx.setStorageSync(k, v)),
 });

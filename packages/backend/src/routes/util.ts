@@ -1,31 +1,25 @@
-import { Document } from 'mongoose';
-import { omit } from 'shared';
-import { BizCode } from 'shared/data';
+import { OutputCode, type ExtractOutput, type Output } from 'shared/data';
+import type { z } from 'zod';
 
 /**create success output */
-export function o<T>(
+export function o<T extends any = undefined>(
   type: 'succ',
-  data: T,
-): Extract<Shared.Output<T>, { code: 0 }>;
+  data?: T,
+): ExtractOutput<z.infer<Output<T>>, 0>;
 /**create failure output */
-export function o(
-  type: 'fail',
-  msg: string,
-): Extract<Shared.Output, { code: 1 }>;
-/**convert Document to plain object */
-export function o<T extends {}>(data: Document<unknown, {}, T>): T;
+export function o(type: 'fail', msg: string): ExtractOutput<z.infer<Output>, 1>;
+/**create output by code */
+export function o<T extends OutputCode>(
+  code: T,
+): ExtractOutput<z.infer<Output>, T>;
 /**check output's type */
-export function o<T extends Shared.Output>(data: T): T;
-export function o(...args: any[]) {
-  if (args.length === 1) {
-    const data = args[0];
-    return data instanceof Document
-      ? omit(data.toObject({ minimize: false }), ['_id', '__v'])
-      : data;
-  }
-  const [type, content] = args;
-  if (type === 'succ')
-    return { code: BizCode.Success.value, msg: '', data: o(content) };
-  if (type === 'fail') return { code: BizCode.Fail.value, msg: o(content) };
-  throw 'unknown type';
+export function o<T extends z.infer<Output>>(data: T): T;
+export function o(...[p0, p1]: any[]) {
+  if (typeof p0 === 'object') return p0;
+  //@ts-ignore
+  if (typeof p0 === 'number') return { code: p0, msg: OutputCode[p0].msg };
+  if (p0 === 'succ')
+    return { code: OutputCode.Success.value, msg: '', data: p1 };
+  if (p0 === 'fail') return { code: OutputCode.Fail.value, msg: p1 };
+  throw new Error('Invalid output arguments');
 }

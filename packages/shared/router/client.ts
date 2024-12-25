@@ -1,14 +1,14 @@
-import { type Middle } from '..';
-import { BizCode } from '../data';
-import { a_batch, a_json, b_json, zodCheck } from '../middle';
+import { packageName, type Middle } from '..';
+import { OutputCode, type ExtractOutput } from '../data';
 import {
   apiRecords,
   type ApiRecords,
   type ApiRecordTypes,
-  type Input,
-  type Output,
+  type In,
+  type Out,
   type Path,
 } from './api';
+import { a_batch, a_json, b_json, zodCheck } from './middle';
 import { Client } from './rpc';
 
 export const devPort = 3000;
@@ -18,78 +18,46 @@ export function getApiURL<T extends 'http' | 'ws' = 'http'>(
 ) {
   return isDev
     ? (`${protocol}://localhost:${devPort}` as const)
-    : (`${protocol}s://essai.bluebones.fun/api` as const);
+    : (`${protocol}s://${packageName}.bluebones.fun/api` as const);
 }
 
-type CodeCbs<O extends { code: BizCode }> = {
-  [K in O['code']]?: (
-    res: O extends { code: infer C } ? (K extends C ? O : never) : never,
-  ) => void;
+type CodeCbs<O extends { code: OutputCode }> = {
+  [K in O['code']]?: (res: ExtractOutput<O, K>) => void;
 };
 declare module './rpc' {
   namespace Client {
-    interface ExtraContext<T, P> {
-      //@ts-ignore
+    interface Context<P> {
       api: ApiRecords[P];
       signal?: AbortSignal;
-      //@ts-ignore
-      codeCbs: CodeCbs<Output[P]>;
+      codeCbs: CodeCbs<Out[P]>;
     }
   }
 }
-export type ClientContext<P extends Path = Path> = Client.Context<
-  ApiRecordTypes,
-  P
->;
 export function createClient(opts: {
-  send(ctx: ClientContext): void;
+  send(ctx: Client.Context): void;
   error(msg: string, ...e: any): void;
-  setToken(token: Shared.Token): void;
+  setToken(token: Shared['token']): void;
 }) {
-  const client = new Client<ApiRecordTypes>({ onError: opts.error });
-  client
-    .use(function addApiRecord(ctx, next) {
-      ctx.api = apiRecords[ctx.path];
-      if (!ctx.api) return opts.error(`invalid path: ${ctx.path}`);
-      return next();
-    })
+  const client = new Client();
+  client.in
     .use(
       zodCheck({
         type: 'in',
         onFail: (ctx, reason) => opts.error(`${ctx.path} in`, reason),
       }),
     )
-    .use(function defaultCbs(ctx, next) {
-      ctx.onError = (err) => opts.error(`${ctx.path}.onError: ${err}`, err);
-      ctx.codeCbs = {
-        [BizCode.Fail.value]: (res) =>
-          opts.error(`${BizCode[res.code].name} ${res.msg}`),
-        [BizCode.Unauthorizen.value]: () =>
-          client.send({
-            path: '/token/refresh',
-            input: void 0,
-            codeCbs: {
-              [BizCode.Success.value](res) {
-                opts.setToken(res.data);
-                client.send(ctx);
-              },
-            },
-          }),
-        ...ctx.codeCbs,
-      };
-      if (ctx.path === '/token/refresh') {
-        ctx.codeCbs[BizCode.Unauthorizen.value] = () =>
-          opts.error('请重新登录');
-      }
-      return next();
-    })
     .use(
-      a_batch({ ms: 2e2, client, ignore: (ctx) => ctx.api.meta.type === 'ws' }),
+      a_batch({
+        ms: 2e2,
+        send: ({ path, input, codeCbs }) =>
+          new ProxyClient(path).send(input, codeCbs),
+        ignore: (ctx) => ctx.api.meta.type === 'ws',
+      }),
     )
-    .mark('in-insert')
+    .mark('with')
     .use(a_json({ key: 'input' }))
-    .use(opts.send)
-    .mark('---')
+    .use(opts.send);
+  client.out
     .use(b_json({ key: 'output' }))
     .use(
       zodCheck({
@@ -97,7 +65,7 @@ export function createClient(opts: {
         onFail: (ctx, reason) => opts.error(`${ctx.path} out`, reason),
       }),
     )
-    .mark('out-insert')
+    .mark('with')
     .use(function callCodeCbs(ctx, next) {
       const cb = ctx.codeCbs[ctx.output.code];
       if (!cb)
@@ -109,22 +77,48 @@ export function createClient(opts: {
     constructor(public path: P) {
       this.path = path;
     }
-    with(middle: Middle<ClientContext>) {
-      client.with('in', middle);
+    with(middle: Middle<Client.Context>) {
+      client.in.with(middle);
       return this;
     }
-    send(input: Input[P], codeCbs: CodeCbs<Output[P]> = {}) {
+    send(input: In[P], codeCbs: CodeCbs<Out[P]> = {}) {
       const path = this.path;
-      return client.send({ path, input, codeCbs });
+      const api = apiRecords[path];
+      if (!api) return opts.error(`invalid path: ${path}`);
+      const ctx: Client.LeastContext = {
+        path,
+        input,
+        api,
+        codeCbs: {
+          [OutputCode.Fail.value]: (res) =>
+            opts.error(`${OutputCode[res.code].name} ${res.msg}`),
+          [OutputCode.Unauthorizen.value]() {
+            new ProxyClient('/token/refresh').send(void 0, {
+              [OutputCode.Success.value](res) {
+                opts.setToken(res.data);
+                client.send(ctx);
+              },
+              [OutputCode.Unauthorizen.value]() {
+                opts.error('请重新登录');
+              },
+            });
+          },
+          ...codeCbs,
+        },
+        onError(err) {
+          opts.error(`${path}.onError: ${err}`, err);
+        },
+      };
+      return client.send(ctx);
     }
   }
-  return new Proxy({} as { [P in keyof ApiRecords]: ProxyClient<P> }, {
+  return new Proxy({} as { [P in keyof ApiRecordTypes]: ProxyClient<P> }, {
     get: (_, path: Path) => new ProxyClient(path),
   });
 }
 
 // middlewares
-export function abort(cb: (abort: () => void) => void): Middle<ClientContext> {
+export function abort(cb: (abort: () => void) => void): Middle<Client.Context> {
   return function abort(ctx, next) {
     const ac = new AbortController();
     cb(() => ac.abort());
@@ -132,7 +126,7 @@ export function abort(cb: (abort: () => void) => void): Middle<ClientContext> {
     return next();
   };
 }
-export function once(): Middle<ClientContext> {
+export function once(): Middle<Client.Context> {
   let abortFn: () => void;
   return function once(ctx, next) {
     abortFn?.();
@@ -142,7 +136,7 @@ export function once(): Middle<ClientContext> {
 export function progress<T, K extends BooleanKey<T>>(
   obj: T,
   key: K,
-): Middle<ClientContext> {
+): Middle<Client.Context> {
   const o = {
     //@ts-ignore
     set value(v) {

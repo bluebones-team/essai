@@ -2,15 +2,9 @@
  * a_* means send end
  * b_* means receive end
  */
+import { Client, Router, type ApiRecord } from '.';
 import { error, type Middle } from '..';
-import { BizCode } from '../data';
-import {
-  Client,
-  type ApiRecord,
-  type ApiRecordTypes,
-  type ClientContext,
-  type Input,
-} from '../router';
+import { OutputCode } from '../data';
 
 export const a_json = Object.assign(
   <K extends string>(opts: { key: K }) => {
@@ -58,61 +52,59 @@ export const b_json = Object.assign(
 
 export const a_batch = (opts: {
   ms: number;
-  client: Client<ApiRecordTypes>;
-  ignore?(ctx: ClientContext): boolean;
-}): Middle<ClientContext> => {
-  const sendQueue: ClientContext[] = [];
-  const handleQueue: ClientContext[] = [];
+  send(
+    data: Pick<Client.Context<'/batch'>, 'path' | 'input' | 'codeCbs'>,
+  ): void;
+  ignore?(ctx: Client.Context): boolean;
+}): Middle<Client.Context> => {
+  const inQueue: Client.Context[] = [];
+  const outQueue: Client.Context[] = [];
   return function a_batch(ctx, next) {
     if (ctx.path === '/batch' || opts.ignore?.(ctx)) return next();
-    sendQueue.push(ctx);
-    if (handleQueue.length || sendQueue.length > 1) return;
+    inQueue.push(ctx);
+    if (outQueue.length || inQueue.length > 1) return;
     globalThis.setTimeout(() => {
-      if (sendQueue.length === 1) {
-        sendQueue.length = 0;
+      if (inQueue.length === 1) {
+        inQueue.length = 0;
         return next();
       }
-      opts.client
-        .with('out', async function clearBatchQueue(ctx, next) {
-          try {
-            await next();
-          } finally {
-            handleQueue.length = 0;
-          }
-        })
-        .send({
-          path: '/batch',
-          input: sendQueue.map((e) => [e.path, e.input]),
-          codeCbs: {
-            [BizCode.Success.value](res) {
-              handleQueue.forEach((e, i) => e.onData(res.data[i]));
-            },
+      opts.send({
+        path: '/batch',
+        input: inQueue.map((e) => [e.path, e.input]) as [string, any][],
+        codeCbs: {
+          [OutputCode.Success.value](res) {
+            try {
+              outQueue.forEach((e, i) => e.onData(res.data[i]));
+            } finally {
+              outQueue.length = 0;
+            }
           },
-        });
-      handleQueue.push(...sendQueue);
-      sendQueue.length = 0;
+        },
+      });
+      outQueue.push(...inQueue);
+      inQueue.length = 0;
     }, opts.ms);
   };
 };
-export const b_batch = <
-  T extends { path: string; input: Input['/batch']; output: unknown },
->(opts: {
-  createContext(ctx: T, data: { path: string; input: any }): T;
-  callRoute(ctx: T): MaybePromise<void>;
-  onSuccess(ctx: T, output: T['output'][]): void;
-}): Middle<T> =>
-  async function b_batch(ctx, next) {
+export const b_batch = (opts: {
+  handle(newCtx: Router.Context): MaybePromise<void>;
+  onSuccess(ctx: Router.Context, output: Router.Context['output'][]): void;
+}) =>
+  async function b_batch(ctx: Router.Context<'/batch'>, next) {
     if (ctx.path !== '/batch') return next();
     const output = await Promise.all(
       ctx.input.map(async ([path, input]) => {
-        const data = { path, input };
-        const newCtx = opts.createContext(ctx, data);
-        await opts.callRoute(newCtx);
+        const newCtx = new Proxy(
+          { path, input } as Router.Context,
+          //@ts-ignore
+          { get: (o, p) => o[p] ?? ctx[p] },
+        );
+        await opts.handle(newCtx);
         return newCtx.output;
       }),
     );
     return opts.onSuccess(ctx, output);
-  };
+  } as Middle<Router.Context>;
 
 export function zodCheck<
   K extends 'in' | 'out',
