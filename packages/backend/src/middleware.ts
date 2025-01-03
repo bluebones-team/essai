@@ -3,6 +3,7 @@ import pinoLogger from 'koa-pino-logger';
 import type { PrettyOptions } from 'pino-pretty';
 import { env, pick } from 'shared';
 import { a_json, b_json } from 'shared/router';
+import { o } from './util';
 
 /**@see https://github.com/pinojs/pino/blob/main/docs/api.md#options */
 export const log = pinoLogger({
@@ -84,8 +85,8 @@ export const cors = (): Middleware => (ctx, next) => {
 
 export const catcher: Middleware = (ctx, next) =>
   next().catch((err) => {
-    ctx.status = 500;
     ctx.log.error(err);
+    ctx.output = o('fail', 'server error');
   });
 
 // const SECRET_KEY = 'secret';

@@ -14,17 +14,6 @@ const Card = ({ title, text }) => (
   </div>
 );
 //@ts-ignore
-const Block = ({ title, subtitle }, { slots }) => (
-  <>
-    <Divider />
-    <div class="text-center my-16">
-      <h2 class="text-h4 mb-2">{title}</h2>
-      <p class="mb-4 font-weight-light">{subtitle}</p>
-      {slots.default?.()}
-    </div>
-  </>
-);
-//@ts-ignore
 const Link = (props, { slots }) => (
   <a
     target="_blank"
@@ -71,6 +60,7 @@ export default defineComponent(
               <VBtn size="large" {...e} />
             ))}
           </div>
+          {/* 
           <Divider />
           <div class="d-flex flex-wrap justify-center ga-6 my-16">
             {[
@@ -89,7 +79,7 @@ export default defineComponent(
             ].map((e) => (
               <Card {...e} />
             ))}
-          </div>
+          </div> */}
         </div>
         <VFooter class="bg-primary text-center py-16">
           <div class="mx-auto">

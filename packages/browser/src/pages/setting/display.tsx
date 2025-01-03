@@ -30,17 +30,17 @@ const ThemePanel = defineComponent(() => {
                 style:
                   'clip-path: polygon(-1px -1px, -1px 101%, 25% 101%, 75% -1px)',
               })}
-              {panel.text(Theme.System.title, isSelected ?? false)}
+              {panel.text(Theme.System.text, isSelected ?? false)}
             </div>,
           ],
         },
         {
           value: Theme.Light.value,
-          comp: panel.toComp(Theme.Light.title, { theme: 'light' }),
+          comp: panel.toComp(Theme.Light.text, { theme: 'light' }),
         },
         {
           value: Theme.Dark.value,
-          comp: panel.toComp(Theme.Dark.title, { theme: 'dark' }),
+          comp: panel.toComp(Theme.Dark.text, { theme: 'dark' }),
         },
       ]}
     />
@@ -58,7 +58,7 @@ const RolePanel = defineComponent(() => {
         items={[
           {
             value: Role.Participant.value,
-            comp: panel.toComp(Role.Participant.title, {
+            comp: panel.toComp(Role.Participant.text, {
               theme: toAppTheme(Role.Participant.value, theme.actual),
               style: {
                 '--v-theme-on-surface': 'var(--v-theme-primary)',
@@ -68,7 +68,7 @@ const RolePanel = defineComponent(() => {
           },
           {
             value: Role.Recruiter.value,
-            comp: panel.toComp(Role.Recruiter.title, {
+            comp: panel.toComp(Role.Recruiter.text, {
               theme: toAppTheme(Role.Recruiter.value, theme.actual),
               style: {
                 '--v-theme-on-surface': 'var(--v-theme-primary)',
@@ -98,10 +98,10 @@ export default defineComponent(
     const sections = computed(() => {
       return [
         {
-          title: '自定义外观',
+          title: ' ',
           items: [
-            { title: '角色', comp: RolePanel },
             { title: '主题', comp: ThemePanel },
+            { title: '角色', comp: RolePanel },
           ],
         },
       ];

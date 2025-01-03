@@ -10,10 +10,10 @@ import WebSocket from 'ws';
 const port = env('PORT', '' + devPort);
 const app = new Koa()
   .use(log)
-  .use(catcher)
   .use(cors())
   .use(helmet())
   .use(convert())
+  .use(catcher)
   // .use(antiSpider)
   .use(routerMiddle);
 const server = app.listen(port, () => {

@@ -1,29 +1,23 @@
 import {
   mdiAccountMultipleOutline,
   mdiArrowLeft,
+  mdiCheck,
+  mdiClose,
   mdiContentSaveOutline,
   mdiDeleteOutline,
   mdiFileMultipleOutline,
-  mdiInformationOutline,
   mdiPublish,
 } from '@mdi/js';
 import {
-  Gender,
+  birth_age,
   ExperimentState,
   ExperimentType,
+  Gender,
   RecruitmentType,
   Role,
 } from 'shared/data';
-import {
-  computed,
-  defineComponent,
-  provide,
-  reactive,
-  toRef,
-  watchEffect,
-} from 'vue';
+import { computed, defineComponent, ref, toRef, watchEffect } from 'vue';
 import { useDisplay } from 'vuetify';
-import { VAlert } from 'vuetify/components/VAlert';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VBtnToggle } from 'vuetify/components/VBtnToggle';
 import { VChip } from 'vuetify/components/VChip';
@@ -31,29 +25,29 @@ import { VFab } from 'vuetify/components/VFab';
 import { VMain } from 'vuetify/components/VMain';
 import { VToolbar } from 'vuetify/components/VToolbar';
 import { Dialog } from '~/components/dialog';
-import { ProjectInfo } from '~/components/proj-info';
+import { ExperimentDetail } from '~/components/experiment';
 import { Table } from '~/components/table';
 import { c } from '~/ts/client';
-import { birth_age } from 'shared/data';
-import { usePopup, useExpData, useTempModel } from '~/ts/hook';
-import { injection, snackbar } from '~/ts/state';
+import { useExperimentData, usePopup, useTempModel } from '~/ts/hook';
+import { snackbar } from '~/ts/state';
 import { error } from '~/ts/util';
 
 const {
-  proj,
-  fetchExpList: fetchProjList,
+  exp,
+  fetchList: fetchExpList,
   filter,
-  simpleSearch,
+  search,
   ptc,
   fetchPtcList,
-} = useExpData('own');
-const editable = () =>
-  !!proj.preview && ExperimentState[proj.preview.state].editable;
+} = useExperimentData('own');
+const readonly = computed(
+  () => exp.selected && ExperimentState[exp.selected.state].readonly,
+);
 
 const _Table = () => (
   <Table
-    v-model={proj.preview}
-    items={proj.list}
+    v-model={exp.selected}
+    items={exp.list}
     headers={[
       { title: '名称', key: 'title' },
       {
@@ -81,21 +75,21 @@ const _Table = () => (
                 { eid: item.eid },
                 {
                   0(res) {
-                    proj.list.splice(proj.list.indexOf(item), 1);
+                    exp.list.splice(exp.list.indexOf(item), 1);
                   },
                 },
               );
             }}
-          ></VBtn>
+          />
         ),
       },
     ]}
-    v-slots={{
+    slots={{
       toolbar: () => (
         <VToolbar>
           <VBtnToggle
             v-model={filter.data.state}
-            onUpdate:modelValue={simpleSearch}
+            onUpdate:modelValue={search}
             class="bg-surface mx-auto"
             density="compact"
             variant="outlined"
@@ -103,17 +97,15 @@ const _Table = () => (
             mandatory
           >
             {ExperimentState.items.map((e) => (
-              <VBtn value={e.value}>{e.title}</VBtn>
+              <VBtn value={e.value}>{e.text}</VBtn>
             ))}
           </VBtnToggle>
         </VToolbar>
       ),
-      noData: () => (
-        <VAlert
-          title={ExperimentState[filter.data.state].noItem}
-          icon={mdiInformationOutline}
-        />
-      ),
+      noData: () =>
+        filter.data.state !== void 0
+          ? ExperimentState[filter.data.state].noItem
+          : null,
     }}
   />
 );
@@ -128,95 +120,88 @@ const _Fab = () =>
       onClick={() => {
         c['/exp/add'].send(void 0, {
           0(res) {
-            proj.list.push(res.data);
-            proj.preview = res.data;
+            exp.list.push(res.data);
+            exp.selected = res.data;
           },
         });
       }}
     />
   ) : null;
 const _Detail = defineComponent(() => {
-  const isPasses = reactive([] as boolean[]);
-  const temp = useTempModel(toRef(proj, 'data'));
+  const isValid = ref(false);
+  const temp = useTempModel(toRef(exp, 'selected'));
 
   function check() {
-    if (!isPasses.length && isPasses.every((e) => e))
-      return error('表单验证错误');
+    if (!isValid.value) return error('表单验证错误');
     const tempModel = temp.model.value;
-    if (!tempModel?.recruitments.length) return error('该项目没有招募信息');
-    return tempModel;
+    if (!tempModel) return error('请选择实验');
+    return tempModel!;
   }
   async function save() {
-    const tempModel = check();
+    const exp = check();
     if (temp.hasChange.value) {
-      await c['/exp/edit'].send(tempModel, {
+      await c['/exp/edit'].send(exp, {
         0(res) {
           temp.save();
-          snackbar.show({
-            text: `${tempModel?.title} 已保存`,
-            color: 'success',
-          });
+          snackbar.show({ text: `${exp.title} 已保存`, color: 'success' });
         },
       });
     } else {
-      snackbar.show({ text: `${tempModel.title} 无需保存` });
+      snackbar.show({ text: `${exp.title} 无需保存` });
     }
   }
   async function publish() {
     await save();
-    const tempModel = check();
+    const exp = check();
     c['/exp/publish'].send(
-      { eid: tempModel.eid },
+      { eid: exp.eid },
       {
         0(res) {
-          tempModel.state = ExperimentState.Passed.value;
-          snackbar.show({
-            text: `${tempModel.title} 已发布`,
-            color: 'success',
-          });
+          exp.state = ExperimentState.Passed.value;
+          snackbar.show({ text: `${exp.title} 已发布`, color: 'success' });
         },
       },
     );
   }
 
-  const actions = computed<Props<typeof ProjectInfo>['actions']>(() =>
-    editable()
-      ? [
-          {
-            text: '保存',
-            prependIcon: mdiContentSaveOutline,
-            onClick: save,
-          },
-          {
-            text: '发布',
-            prependIcon: mdiPublish,
-            onClick: publish,
-            variant: 'outlined',
-            class: 'mr-4',
-          },
-        ]
-      : proj.preview?.state === ExperimentState.Passed.value
-        ? [
-            {
-              text: '参与者',
-              prependIcon: mdiAccountMultipleOutline,
-              onClick: () => ptc_dialog.show(),
-            },
-            // {
-            //   text: '日程',
-            //   prependIcon: mdiCalendarOutline,
-            //   onClick: fetchSched,
-            //   class: 'mr-4',
-            // },
-          ]
-        : void 0,
-  );
   return () => (
-    <ProjectInfo
-      v-model={temp.model.value}
-      v-model:isPass={isPasses}
-      onBack={detail_dialog.close}
-      actions={actions.value}
+    <ExperimentDetail
+      v-model={isValid.value}
+      experiment={temp.model.value}
+      readonly={readonly.value}
+      slots={{
+        append: () =>
+          exp.selected?.state === ExperimentState.Passed.value
+            ? [
+                {
+                  text: '参与者',
+                  prependIcon: mdiAccountMultipleOutline,
+                  onClick: () => ptc_dialog.show(),
+                },
+                // {
+                //   text: '日程',
+                //   prependIcon: mdiCalendarOutline,
+                //   onClick: fetchSched,
+                //   class: 'mr-4',
+                // },
+              ].map((e) => <VBtn {...e} />)
+            : readonly.value
+              ? []
+              : [
+                  {
+                    text: '保存',
+                    prependIcon: mdiContentSaveOutline,
+                    onClick: save,
+                  },
+                  {
+                    text: '发布',
+                    prependIcon: mdiPublish,
+                    onClick: publish,
+                    variant: 'outlined' as const,
+                    class: 'mr-4',
+                  },
+                ].map((e) => <VBtn {...e} />),
+      }}
     />
   );
 });
@@ -236,7 +221,7 @@ const _PtcList = () => {
         {
           title: '性别',
           key: 'gender',
-          value: (item) => Gender[item.gender].title,
+          value: (item) => Gender[item.gender].text,
         },
         {
           title: '年龄',
@@ -249,26 +234,42 @@ const _PtcList = () => {
           width: '4rem',
           sortable: false,
           value: (item) => (
-            <VBtn
-              icon={mdiDeleteOutline}
-              color="error"
-              variant="text"
-              onClick={(e: MouseEvent) => {
-                e.stopPropagation();
-                c['/exp/recruit/ptc/reject'].send(
-                  { rtype: ptc.rtype, uid: item.uid },
-                  {
-                    0(res) {
-                      ptc.list.splice(ptc.list.indexOf(item), 1);
+            <div class="d-flex">
+              <VBtn
+                icon={mdiCheck}
+                color="success"
+                variant="text"
+                size="small"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  c['/exp/recruit/ptc/approve'].send(
+                    { rtype: ptc.rtype, uid: item.uid },
+                    { 0(res) {} },
+                  );
+                }}
+              />
+              <VBtn
+                icon={mdiClose}
+                color="error"
+                variant="text"
+                size="small"
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  c['/exp/recruit/ptc/reject'].send(
+                    { rtype: ptc.rtype, uid: item.uid },
+                    {
+                      0(res) {
+                        ptc.list.splice(ptc.list.indexOf(item), 1);
+                      },
                     },
-                  },
-                );
-              }}
-            ></VBtn>
+                  );
+                }}
+              />
+            </div>
           ),
         },
       ]}
-      v-slots={{
+      slots={{
         toolbar: () => [
           mobile.value && (
             <VBtn icon={mdiArrowLeft} onClick={ptc_dialog.close} />
@@ -282,10 +283,9 @@ const _PtcList = () => {
             divided
             mandatory
           >
-            {proj.data?.recruitments.map(({ rtype }) => {
-              const e = RecruitmentType[rtype];
-              return <VBtn value={e.value}>{e.title}</VBtn>;
-            })}
+            {RecruitmentType.items.map((e) => (
+              <VBtn value={e.value}>{e.text}</VBtn>
+            ))}
           </VBtnToggle>,
         ],
         noData: () => '暂无参与者',
@@ -294,11 +294,9 @@ const _PtcList = () => {
   );
 };
 
-const detail_dialog = usePopup(Dialog, () => ({ content: _Detail }));
 const ptc_dialog = usePopup(Dialog, () => ({ content: _PtcList }));
 watchEffect(() => {
-  if (proj.data) {
-    detail_dialog.show();
+  if (exp.selected) {
     fetchPtcList();
   }
 });
@@ -306,7 +304,7 @@ watchEffect(() => {
 export const route: LooseRouteRecord = {
   meta: {
     nav: {
-      tip: '项目管理',
+      tip: '管理',
       icon: mdiFileMultipleOutline,
       order: 4,
     },
@@ -319,10 +317,9 @@ export const route: LooseRouteRecord = {
 export default defineComponent({
   name: 'Own',
   beforeRouteEnter(to, from, next) {
-    fetchProjList().finally(next);
+    fetchExpList().finally(next);
   },
   setup() {
-    provide(injection.editable, editable);
     const { mobile } = useDisplay();
     return () => (
       <VMain class={'h-100 d-grid ' + (mobile.value ? '' : 'grid-col-3')}>
@@ -330,7 +327,7 @@ export default defineComponent({
           <_Table />
           <_Fab />
         </div>
-        {mobile.value ? <detail_dialog.Comp /> : <_Detail />}
+        <_Detail />
         {mobile.value ? <ptc_dialog.Comp /> : <_PtcList />}
       </VMain>
     );

@@ -13,17 +13,52 @@ import {
   type EnumMeta,
 } from './enum';
 
+declare module 'zod' {
+  interface Meta {
+    // default?: T;
+    text: string;
+    desc: string;
+    items?: LooseObject[];
+    type?: 'date' | 'textarea' | 'range';
+  }
+  interface ZodType {
+    readonly _meta?: Meta;
+    meta: (data: Partial<Meta>) => this;
+  }
+}
+Object.defineProperties(z.ZodType.prototype, {
+  _meta: {
+    get() {
+      return this._def?.meta;
+    },
+  },
+  meta: {
+    /**@see https://github.com/colinhacks/zod/blob/main/src/types.ts#L556 */
+    value(data: {}) {
+      const This = (this as any).constructor;
+      return new This({
+        ...this._def,
+        meta: Object.assign(this._meta ?? {}, data),
+      });
+    },
+  },
+});
+
 function enums<const T extends number>(
-  obj: Pick<EnumMeta<T[]>, 'enums'>,
+  obj: PartialByKey<EnumMeta<T[]>, 'items'>,
   isStr?: true,
 ) {
   type Enum = UnionToTuple<T extends number ? z.ZodLiteral<T> : never>;
-  //@ts-ignore
-  return z.union<Enum>(
-    obj.enums.flatMap((v) =>
-      isStr ? [z.literal(v), z.literal('' + v)] : z.literal(v),
-    ),
-    { message: `枚举值无效: ${obj.enums}` },
+  return (
+    z
+      //@ts-ignore
+      .union<Enum>(
+        obj.enums.flatMap((v) =>
+          isStr ? [z.literal(v), z.literal('' + v)] : z.literal(v),
+        ),
+        { message: `枚举值无效: ${obj.enums}` },
+      )
+      .meta({ items: obj.items })
   );
 }
 function diff<const U extends {}, const T extends U>(
@@ -45,7 +80,8 @@ export const param = {
   uid: z.object({ uid: posInt }),
   eid: z.object({ eid: posInt }),
   /**招募类型、参与者类型 */
-  rtype: z.object({ rtype: enums(RecruitmentType) }),
+  rtype: z.object({ rtype: enums(RecruitmentType).meta({ text: '招募类型' }) }),
+  code: z.string().length(6, '验证码长度应为 6 位').meta({ text: '验证码' }),
 };
 //@ts-ignore
 export function output<T extends z.ZodType = z.ZodAny>(data: T = z.any()) {
@@ -72,7 +108,7 @@ export type ExtractOutput<
 
 export const shared = (function () {
   /**时间戳, 单位s */
-  const timestamp = posInt.min(0).brand<'timestamp'>();
+  const timestamp = posInt.min(0).brand<'timestamp'>().meta({ type: 'date' });
   /**持续时间, 单位min */
   const duration = posInt
     .min(0)
@@ -99,16 +135,16 @@ export const shared = (function () {
 
 export const user = (function () {
   const editable = z.object({
-    name: max20Str,
-    face: z.string().url(), // 存在安全隐患
+    name: max20Str.meta({ text: '昵称' }),
+    face: z.string().url().meta({ text: '头像' }), // 存在安全隐患
   });
   const _public = param.uid.merge(editable).extend({
-    gender: enums(Gender),
-    birthday: shared.timestamp,
+    gender: enums(Gender).meta({ text: '性别' }),
+    birthday: shared.timestamp.meta({ text: '生日' }),
   });
   const own = _public.extend({
-    phone: z.string().length(11, '手机号长度为 11 位'),
-    emails: z.string().email().array(),
+    phone: z.string().length(11, '手机号长度为 11 位').meta({ text: '手机号' }),
+    emails: z.string().email().array().meta({ text: '邮箱' }),
     recruiter: z.boolean(),
     pwd: z.boolean(),
   });
@@ -121,7 +157,11 @@ export const user = (function () {
     back: own.extend({
       pwd: z
         .string()
-        .regex(/^\w{6,16}$/, '密码长度为 6-16 位，只能包含字母、数字或下划线')
+        .regex(
+          /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+={}\[\]:;"'<>?,./~`-]).{8,}$/,
+          '至少 8 位，需要包含 1 个大写字母、1 个小写字母、1 个数字、1 个特殊字符',
+        )
+        .meta({ text: '密码' })
         .optional(),
       created_at: shared.timestamp,
     }),
@@ -156,31 +196,29 @@ export const recruitment_participant = {
   back: param.uid.extend({ rcid: posInt, state: enums(JoinState) }),
 };
 export const recruitment = (function () {
-  const back = param.eid.merge(param.rtype).extend({
-    rid: posInt,
+  const base = param.eid.merge(param.rtype).extend({
     fee: posInt.max(1e3),
-    notice: max100Str,
+    notice: max100Str.meta({ type: 'textarea' }),
     durations: shared.duration.array().min(1),
     // max_concurrency: posInt,
     // should_select_event: z.boolean(),
   });
   return {
-    front: back.extend({
+    front: base.extend({
       conditions: recruitment_condition.front.array().min(1),
     }),
-    back,
+    back: base.extend({ rid: posInt }),
   };
 })();
 export const experiment = (function () {
   const _public = (function () {
     const preview = param.eid.extend({
-      type: enums(ExperimentType),
-      title: max20Str,
-      position: shared.position,
-      recruitments: recruitment.front.array(),
+      type: enums(ExperimentType).meta({ text: '实验类型' }),
+      title: max20Str.meta({ text: '实验名称' }),
+      position: shared.position.meta({ text: '实验室位置' }),
     });
     const supply = param.uid.extend({
-      notice: max100Str,
+      notice: max100Str.meta({ type: 'textarea', text: '实验须知' }),
       // events: z.tuple([shared.timestamp, shared.timestamp]).array().min(1),
     });
     const data = preview.merge(supply);
@@ -191,54 +229,52 @@ export const experiment = (function () {
     return { preview, supply, data };
   })();
   const joined = (function () {
-    const preview = _public.preview.omit({ recruitments: true });
+    const preview = _public.preview;
     const data = _public.data;
     const supply = diff(data, preview);
     // const schedule = _public.schedule;
     return { preview, supply, data };
   })();
   const own = (function () {
-    const preview = param.eid.extend({
-      type: enums(ExperimentType),
-      title: max20Str,
-      state: enums(ExperimentState),
-    });
+    const preview = _public.data
+      .extend({ state: enums(ExperimentState) })
+      .omit({ position: true });
     const data = _public.data.extend({ state: enums(ExperimentState) });
     const supply = diff(data, preview);
     // const schedule = joined.schedule.extend({ uids: posInt.array() });
     return { preview, supply, data };
   })();
   const filter = (function () {
+    const times = posInt.max(100);
     const range = z.object({
-      duration_range: z.tuple([shared.duration, shared.duration]),
-      times_range: z.tuple([posInt, posInt]),
-      fee_range: z.tuple([
-        recruitment.front.shape.fee,
-        recruitment.front.shape.fee,
-      ]),
+      duration_range: z
+        .tuple([shared.duration, shared.duration])
+        .meta({ type: 'range', text: '实验时长', desc: '单位：min' }),
+      times_range: z
+        .tuple([times, times])
+        .meta({ type: 'range', text: '参加次数' }),
+      fee_range: z
+        .tuple([recruitment.front.shape.fee, recruitment.front.shape.fee])
+        .meta({ type: 'range', text: '实验报酬', desc: '单位：￥' }),
     });
     return {
       range,
       data: range
-        .merge(param.rtype)
+        .merge(own.data.pick({ type: true, state: true }))
         .extend({
-          type: enums(ExperimentType),
-          state: enums(ExperimentState),
-          search: max20Str,
-          /**搜索指令 */
-          // command: z.string(),
+          search: max20Str.meta({ text: '搜索文本' }),
+          // command: z.string().meta({ text: '搜索指令' }),
         })
-        .partial(),
+        .partial()
+        .merge(param.rtype),
     };
   })();
   return {
     front: { public: _public, joined, own, filter },
-    back: own.data.omit({ recruitments: true }).extend({
-      created_at: shared.timestamp,
-    }),
+    back: own.data.extend({ created_at: shared.timestamp }),
   };
 })();
-export type ExperimentDataType = 'public' | 'joined' | 'own';
+export type ExperimentFrontDataType = 'public' | 'joined' | 'own';
 /**举报 */
 export const report = {
   experiment: param.eid.extend({

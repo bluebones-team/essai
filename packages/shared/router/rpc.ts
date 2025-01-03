@@ -30,7 +30,7 @@ export class Client {
     }
     compose() {
       const middles = [...this.middles];
-      middles.splice(this.markers.with, 0, ...this._middles);
+      middles.splice(this.markers.with ?? middles.length, 0, ...this._middles);
       this._middles.length = 0;
       return new Onion(middles).compose();
     }
@@ -72,22 +72,29 @@ export class Router extends Onion<Router.Context, 'handle'> {
       { createContext: (ctx: any) => ctx, routes: {} },
       opts,
     );
-  }
-  private static handle(routes: Router.Routes): Middle<Router.Context> {
-    return async (ctx, next) => {
-      const handler = routes[ctx.path];
-      //@ts-ignore
-      ctx.output = await (handler ? handler.call(routes, ctx) : next());
-    };
+    this.use(async function (ctx, next) {
+      ctx.output = await next();
+    });
   }
   route<P extends keyof T>(path: P, handler: Router.Handler<P>) {
     //@ts-ignore
     this.opts.routes[path] = handler;
     return this;
   }
+  private static handle(routes: Router.Routes): Middle<Router.Context> {
+    return async (ctx, next) => {
+      const handler = routes[ctx.path];
+      //@ts-ignore
+      return await (handler ? handler.call(routes, ctx) : next());
+    };
+  }
   compose(): ComposedMiddle<Router.Context> {
     const middles = [...this.middles];
-    middles.splice(this.markers.handle, 0, Router.handle(this.opts.routes));
+    middles.splice(
+      this.markers.handle ?? middles.length,
+      0,
+      Router.handle(this.opts.routes),
+    );
     const middle = new Onion(middles).compose();
     return (ctx, ...e) => middle(this.opts.createContext(ctx), ...e);
   }

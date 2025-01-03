@@ -4,65 +4,58 @@ import {
   mdiSquareEditOutline,
 } from '@mdi/js';
 import { apiRecords, progress } from 'shared/router';
-import { toFieldRules } from 'shared';
 import { computed, defineComponent, reactive, ref } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VTextField } from 'vuetify/components/VTextField';
-import { Container } from '~/components/container';
 import { Dialog } from '~/components/dialog';
 import { Form } from '~/components/form';
-import { OtpInput } from '~/components/forms/otp-input';
+import { OtpInput } from '~/components/otp-input';
 import { SectionGroup } from '~/components/section-group';
 import { c } from '~/ts//client';
 import { udata } from '~/ts/state';
 
-const rules = toFieldRules(apiRecords['/usr/pwd/edit'].in);
 /**更改密码 */
-function passwordEditInput() {
+function pwdEditInput() {
   const loading = ref(false);
   const data = reactive({ old: '', new: '' });
-  const display = [
-    [
-      {
-        comp: () => (
-          <VTextField v-model={data.old} label="旧密码" rules={rules.old} />
-        ),
-      },
-      {
-        cols: 12,
-        comp: () => (
-          <VTextField v-model={data.new} label="新密码" rules={rules.new} />
-        ),
-      },
-      {
-        comp: () => (
-          <VTextField
-            label="确认新密码"
-            rules={[(value) => value === data.new || '前后密码不一致']}
-          />
-        ),
-      },
-    ],
-  ];
+  const isValid = ref(false);
   return () => (
     <Form
-      size="small"
-      actions={[
-        {
-          text: '更新密码',
-          type: 'submit',
-          variant: 'flat' as const,
-          block: true,
-          loading: loading.value,
-        },
+      v-model={isValid.value}
+      model={data}
+      schema={apiRecords['/usr/pwd/edit'].in}
+      layout={(comps) => [
+        [
+          { comp: comps.old },
+          { comp: comps.new, cols: 12 },
+          {
+            comp: () => (
+              <VTextField
+                label="确认新密码"
+                rules={[(value) => value === data.new || '前后密码不一致']}
+              />
+            ),
+          },
+        ],
+        [
+          {
+            comp: () => (
+              <VBtn
+                text="更新密码"
+                variant="flat"
+                block
+                loading={loading.value}
+                onCLick={() =>
+                  isValid.value &&
+                  c['/usr/pwd/edit'].with(progress(loading, 'value')).send(data)
+                }
+              />
+            ),
+          },
+        ],
       ]}
-      onPass={() => {
-        c['/usr/pwd/edit'].with(progress(loading, 'value')).send(data);
-      }}
-    >
-      <Container display={display} />
-    </Form>
+    />
   );
 }
 /**更改手机号 */
@@ -162,7 +155,7 @@ export default defineComponent(
         <Dialog
           v-model={state.showPwd}
           title="更改密码"
-          content={passwordEditInput()}
+          content={pwdEditInput()}
         />
         <Dialog
           v-model={state.showOtp}

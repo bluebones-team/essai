@@ -1,19 +1,14 @@
+import { mdiArrowLeft, mdiDeleteOutline, mdiSendOutline } from '@mdi/js';
 import {
-  mdiArrowLeft,
-  mdiDeleteOutline,
-  mdiInformationOutline,
-  mdiSendOutline,
-} from '@mdi/js';
-import {
-  Gender,
+  birth_age,
   ExperimentState,
   ExperimentType,
+  Gender,
   RecruitmentType,
   Role,
 } from 'shared/data';
 import { defineComponent, watchEffect } from 'vue';
 import { useDisplay } from 'vuetify';
-import { VAlert } from 'vuetify/components/VAlert';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VBtnToggle } from 'vuetify/components/VBtnToggle';
 import { VChip } from 'vuetify/components/VChip';
@@ -23,17 +18,16 @@ import { VToolbar } from 'vuetify/components/VToolbar';
 import { Dialog } from '~/components/dialog';
 import { Table } from '~/components/table';
 import { c } from '~/ts/client';
-import { birth_age } from 'shared/data';
-import { useUserPtc, usePopup, useExp } from '~/ts/hook';
+import { useExperiment, usePopup, useUserParticipant } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
 
-const { state: proj, fetchList: fetchProjList } = useExp('own');
-const { state: lib, fetchList: fetchLibList } = useUserPtc();
+const { state: exp, fetchList: fetchExpList } = useExperiment('own');
+const { state: ptc, fetchList: fetchPtcList } = useUserParticipant();
 
 const _Table = () => (
   <Table
-    v-model={proj.preview}
-    items={proj.list}
+    v-model={exp.selected}
+    items={exp.list}
     headers={[
       { title: '名称', key: 'title' },
       {
@@ -46,11 +40,9 @@ const _Table = () => (
         ),
       },
     ]}
-    v-slots={{
+    slots={{
       toolbar: () => <VToolbar title="已发布的项目" />,
-      noData: () => (
-        <VAlert title="当前区域没有项目" icon={mdiInformationOutline} />
-      ),
+      noData: () => '当前区域没有项目',
     }}
   />
 );
@@ -58,8 +50,8 @@ const _LibTable = defineComponent(() => {
   const { mobile } = useDisplay();
   return () => (
     <Table
-      v-model={lib.selected}
-      items={lib.list}
+      v-model={ptc.selected}
+      items={ptc.list}
       multiple
       headers={[
         // {
@@ -71,7 +63,7 @@ const _LibTable = defineComponent(() => {
         {
           title: '性别',
           key: 'gender',
-          value: (item) => Gender[item.gender].title,
+          value: (item) => Gender[item.gender].text,
         },
         {
           title: '年龄',
@@ -91,10 +83,10 @@ const _LibTable = defineComponent(() => {
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
                 c['/usr/ptc/remove'].send(
-                  { rtype: lib.rtype, uid: item.uid },
+                  { rtype: ptc.rtype, uid: item.uid },
                   {
                     0(res) {
-                      lib.list.splice(lib.list.indexOf(item), 1);
+                      ptc.list.splice(ptc.list.indexOf(item), 1);
                     },
                   },
                 );
@@ -103,24 +95,23 @@ const _LibTable = defineComponent(() => {
           ),
         },
       ]}
-      v-slots={{
+      slots={{
         toolbar: () => [
           mobile.value && (
             <VBtn icon={mdiArrowLeft} onClick={lib_dialog.close} />
           ),
           <VBtnToggle
-            v-model={lib.rtype}
-            onUpdate:modelValue={fetchLibList}
+            v-model={ptc.rtype}
+            onUpdate:modelValue={fetchPtcList}
             class="bg-surface mx-auto"
             density="compact"
             variant="outlined"
             divided
             mandatory
           >
-            {proj.data?.recruitments.map(({ rtype }) => {
-              const e = RecruitmentType[rtype];
-              return <VBtn value={e.value}>{e.title}</VBtn>;
-            })}
+            {RecruitmentType.items.map((e) => (
+              <VBtn value={e.value}>{e.text}</VBtn>
+            ))}
           </VBtnToggle>,
         ],
         noData: () => '暂无可推送的参与者',
@@ -136,19 +127,19 @@ const _LibFab = () => (
     absolute
     app
     onClick={() => {
-      if (!proj.preview) return snackbar.show({ text: '请选择要推送的项目' });
-      if (!lib.selected.length)
+      if (!exp.selected) return snackbar.show({ text: '请选择要推送的项目' });
+      if (!ptc.selected.length)
         return snackbar.show({ text: '请选择要推送的参与者' });
       c['/exp/push'].send(
         {
-          eid: proj.preview.eid,
-          rtype: lib.rtype,
-          uids: lib.selected.map((e) => e.uid),
+          eid: exp.selected.eid,
+          rtype: ptc.rtype,
+          uids: ptc.selected.map((e) => e.uid),
         },
         {
           0(res) {
             snackbar.show({
-              text: `${proj.preview?.title} 推送成功`,
+              text: `${exp.selected?.title} 推送成功`,
               color: 'success',
             });
           },
@@ -166,7 +157,7 @@ const _Lib = () => (
 
 const lib_dialog = usePopup(Dialog, () => ({ content: _Lib }));
 watchEffect(() => {
-  if (proj.data) lib_dialog.show();
+  if (exp.selected) lib_dialog.show();
 });
 
 export const route: LooseRouteRecord = {
@@ -186,8 +177,11 @@ export default defineComponent({
   name: 'Push',
   beforeRouteEnter(to, from, next) {
     Promise.allSettled([
-      fetchProjList({ state: ExperimentState.Passed.value }),
-      fetchLibList(),
+      fetchExpList({
+        state: ExperimentState.Passed.value,
+        rtype: RecruitmentType.Subject.value,
+      }),
+      fetchPtcList(),
     ]).finally(next);
   },
   setup() {

@@ -26,6 +26,6 @@ declare module 'vue/jsx-runtime' {
   namespace JSX {
     interface IntrinsicAttributes
       extends Pick<HTMLAttributes, 'class' | 'style' | 'onContextmenu'>,
-        Record<string, unknown> {}
+        Record<string, any> {}
   }
 }

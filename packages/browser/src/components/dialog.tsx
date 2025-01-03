@@ -5,23 +5,21 @@ import { VCard, VCardActions } from 'vuetify/components/VCard';
 import { VDialog } from 'vuetify/components/VDialog';
 import { pickModel } from '~/ts/util';
 
-export const Dialog = defineComponent(function (
-  p: {
-    card?: Props<VCard>;
-    btns?: Props<VBtn>[];
-    content?: Component;
-  } & {
-    modelValue?: boolean;
-    'onUpdate:modelValue'?(value: boolean): void;
-  },
-) {
+export const Dialog = defineComponent(function (p: {
+  card?: Props<VCard>;
+  btns?: Props<VBtn>[];
+  content?: Component;
+  modelValue?: boolean;
+  'onUpdate:modelValue'?(value: boolean): void;
+}) {
   const { mobile } = useDisplay();
   return () => (
     <VDialog
       {...pickModel(p)}
-      width={mobile.value ? '100vw' : 'auto'}
+      scrollable
       fullscreen={mobile.value}
       persistent
+      transition={mobile.value ? 'slide-x-reverse-transition' : void 0}
     >
       <VCard {...p.card} disabled={!!p.card?.loading} rounded={!mobile.value}>
         {p.content && h(p.content)}

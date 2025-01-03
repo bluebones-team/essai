@@ -1,59 +1,103 @@
-import {
-  computed,
-  defineComponent,
-  inject,
-  type ComputedRef,
-  type SetupContext,
-} from 'vue';
-import { useDisplay, type SubmitEventPromise } from 'vuetify';
-import { VBtn } from 'vuetify/components/VBtn';
-import { VCardActions } from 'vuetify/components/VCard';
+import { computed, defineComponent, type VNode, type VNodeChild } from 'vue';
 import { VForm } from 'vuetify/components/VForm';
-import { VSpacer } from 'vuetify/components/VGrid';
-import { injection } from '~/ts/state';
-import { toComputed } from '~/ts/util';
+import { VSelect } from 'vuetify/components/VSelect';
+import { VSwitch } from 'vuetify/components/VSwitch';
+import { VTextarea } from 'vuetify/components/VTextarea';
+import { VTextField } from 'vuetify/components/VTextField';
+import { z } from 'zod';
+import { pickModel } from '~/ts/util';
+import { Container, type ContainerLayout } from './container';
+import { DateInput } from './fields/date-input';
+import { NumberInput } from './fields/number-input';
+import { RangeSlider } from './fields/range-slider';
 
-function useSizeStyle(mobile: ComputedRef<boolean>) {
-  return computed(() => ({
-    small: { width: mobile.value ? '100%' : '20rem' },
-    default: { width: 'auto' },
-    large: { width: mobile.value ? '100vw' : '40rem' },
+export const Field = defineComponent(function <T extends z.ZodTypeAny>(p: {
+  modelValue?: z.infer<T>;
+  'onUpdate:modelValue'?: (value: z.infer<T>) => void;
+  schema: T;
+  label?: string;
+  hint?: string;
+  rules?: ((v: unknown) => Promise<true | string>)[];
+  slots?: Record<string, () => VNodeChild>;
+}) {
+  const { schema } = p;
+  const sharedProps = computed(() => ({
+    modelValue: p.modelValue,
+    'onUpdate:modelValue': p['onUpdate:modelValue'],
+    label: p.label ?? schema._meta?.text,
+    hint: p.hint ?? schema._meta?.desc,
+    rules: p.rules ?? [
+      async function (v: unknown) {
+        const { success, error: err } = await schema.spa(v ?? void 0);
+        return success || err.issues[0].message;
+      },
+    ],
   }));
-}
-export const Form = defineComponent(function (
-  p: {
-    size?: keyof ReturnType<typeof useSizeStyle>['value'];
-    actions?: RequiredByKey<Props<VBtn>, 'text'>[];
-    onPass?(): void;
-    onFail?(errors: Awaited<SubmitEventPromise>['errors']): void;
-  },
-  { slots }: Omit<SetupContext, 'expose'>,
-) {
-  // const p = checkModel(_p);
-  const editable = toComputed(inject(injection.editable, true));
-  const { mobile } = useDisplay();
-  const sizeStyle = useSizeStyle(mobile);
+
+  if (schema._meta?.type === 'textarea')
+    return () => <VTextarea {...sharedProps.value} v-slots={p.slots} />;
+  if (schema._meta?.type === 'date')
+    return () => <DateInput {...sharedProps.value} v-slots={p.slots} />;
+  if (schema._meta?.type === 'range')
+    return () => <RangeSlider {...sharedProps.value} v-slots={p.slots} />;
+  if (schema._meta?.items)
+    return () => (
+      <VSelect
+        {...sharedProps.value}
+        items={schema._meta?.items?.map((e) => ({
+          title: e.text,
+          subtitle: e.name,
+          value: e.value,
+        }))}
+        itemProps
+        v-slots={p.slots}
+      />
+    );
+  if (schema instanceof z.ZodString)
+    return () => <VTextField {...sharedProps.value} v-slots={p.slots} />;
+  if (schema instanceof z.ZodNumber)
+    return () => <NumberInput {...sharedProps.value} v-slots={p.slots} />;
+  if (schema instanceof z.ZodBoolean)
+    return () => <VSwitch {...sharedProps.value} v-slots={p.slots} />;
+  if (schema instanceof z.ZodBranded || schema instanceof z.ZodOptional)
+    return () => (
+      <Field
+        {...sharedProps.value}
+        schema={schema.unwrap()}
+        v-slots={p.slots}
+      />
+    );
+  // console.log(schema);
   return () => (
-    <VForm
-      validateOn="submit lazy"
-      fastFail
-      readonly={!editable.value}
-      style={sizeStyle.value[p.size ?? 'default']}
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const { valid, errors } = await e;
-        valid ? p.onPass?.() : p.onFail?.(errors);
-      }}
-    >
-      {slots.default?.()}
-      {p.actions?.length && (
-        <VCardActions class="pa-4 pt-0">
-          <VSpacer />
-          {p.actions.map((action, i) => (
-            <VBtn key={action.text} {...action} />
-          ))}
-        </VCardActions>
-      )}
+    <VTextField
+      {...sharedProps.value}
+      errorMessages={`not supported field type: ${schema._def.typeName}`}
+      v-slots={p.slots}
+    />
+  );
+});
+export const Form = defineComponent(function <T extends LooseObject>(p: {
+  model: z.infer<z.ZodObject<T>>;
+  schema: z.ZodObject<T>;
+  layout: (comps: { [K in keyof T]: () => VNode }) => ContainerLayout;
+  modelValue?: boolean | null;
+  'onUpdate:modelValue'?: (value: boolean | null) => void;
+}) {
+  const comps = computed(
+    () =>
+      new Proxy(p.schema.shape, {
+        get: (o, k: string) =>
+          o[k] === void 0
+            ? () => `${k} not found`
+            : (attrs: {}) => (
+                <Field v-model={p.model[k]} key={k} schema={o[k]} {...attrs} />
+              ),
+      }),
+  );
+  const layout = computed(() => p.layout(comps.value as any));
+  return () => (
+    <VForm {...pickModel(p)} validateOn="invalid-input lazy" fastFail>
+      <Container layout={layout.value} />
     </VForm>
   );
 });

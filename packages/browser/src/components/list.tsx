@@ -6,7 +6,7 @@ import {
   VListSubheader,
 } from 'vuetify/components/VList';
 import { VScrollYReverseTransition } from 'vuetify/components/transitions';
-import { useDefaults } from '~/ts/hook';
+import { useDefaultProps } from '~/ts/hook';
 
 const typePropsMap = {
   default: {
@@ -85,7 +85,7 @@ export const List = defineComponent(function <T>(
   { slots: _slots }: { slots: Slots<VList> },
 ) {
   const model = useModel(_p, 'modelValue');
-  const p = useDefaults(_p, { type: 'default' });
+  const p = useDefaultProps(_p, { type: 'default' });
   const typeProps = computed(() => typePropsMap[p.type]);
   function ListRoot(
     props: Props<VList>,

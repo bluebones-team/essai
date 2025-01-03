@@ -6,7 +6,7 @@ export * from './sms';
 const extension = {
   async create<T extends keyof BTables>(
     table: T,
-    data: BTables[T],
+    data: Omit<BTables[T], `${string}id`>,
   ): Promise<BTables[T]> {
     const keys = Object.keys(data);
     const values = Object.values(data);

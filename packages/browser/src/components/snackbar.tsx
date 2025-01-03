@@ -1,6 +1,6 @@
 import { defineComponent, shallowReactive, useAttrs, watch } from 'vue';
 import { VSnackbar } from 'vuetify/components/VSnackbar';
-import { useDefaults, useList } from '~/ts/hook';
+import { useDefaultProps, useList } from '~/ts/hook';
 
 export const SnackbarQueue = defineComponent(
   function (props: {
@@ -10,7 +10,7 @@ export const SnackbarQueue = defineComponent(
     color?: string;
   }) {
     const attrs = useAttrs();
-    const p = useDefaults(props, { text: 'snackbar', color: 'primary' });
+    const p = useDefaultProps(props, { text: 'snackbar', color: 'primary' });
     const createItem = (function () {
       let shownNum = 0;
       return (pos: number) => {

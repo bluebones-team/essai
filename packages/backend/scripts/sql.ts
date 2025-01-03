@@ -2,7 +2,7 @@ import { map } from 'shared';
 import { tables } from 'shared/data';
 import { z } from 'zod';
 
-function zodToPostgresType(schema: z.ZodTypeAny): string {
+function zod_postgresType(schema: z.ZodTypeAny): string {
   if (schema instanceof z.ZodString) {
     if (schema.isUUID) return 'UUID';
     return 'VARCHAR';
@@ -22,11 +22,11 @@ function zodToPostgresType(schema: z.ZodTypeAny): string {
       return 'INT';
   }
   if (schema instanceof z.ZodArray) {
-    const elementType = zodToPostgresType(schema.element);
+    const elementType = zod_postgresType(schema.element);
     return `${elementType}[]`;
   }
   if (schema instanceof z.ZodBranded || schema instanceof z.ZodOptional)
-    return zodToPostgresType(schema.unwrap());
+    return zod_postgresType(schema.unwrap());
   if (schema instanceof z.ZodObject) return 'JSONB';
   console.error(`Unsupported Zod type: ${schema._def.typeName}`);
   return 'UNKNOWN';
@@ -36,7 +36,7 @@ const createTableSql = map(tables, ({ back }, tableName) => {
   const statements = map(
     back.shape as Record<string, z.ZodType>,
     (column, columnName) => {
-      return `${columnName} ${zodToPostgresType(column)}`;
+      return `${columnName} ${zod_postgresType(column)}`;
     },
   );
   return `CREATE TABLE IF NOT EXISTS "${tableName}" (\n    ${statements.join(', \n    ')}\n);`;

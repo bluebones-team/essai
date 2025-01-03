@@ -100,11 +100,9 @@ export const storage = {
     this.remove('refresh');
   },
 };
-
-// popup
 export const snackbar = usePopup(SnackbarQueue);
-if (import.meta.env.DEV) Object.assign(window, { snackbar });
-
 export const injection = {
   editable: Symbol('editable') as InjectionKey<MaybeGetter<boolean>>,
 };
+
+Object.assign(window, { app: reactive({ setting, snackbar }) });

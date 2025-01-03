@@ -1,4 +1,4 @@
-import type { FunctionalComponent } from 'vue';
+import type { ComputedRef, FunctionalComponent } from 'vue';
 import type { RouteRecord, RouteRecordRaw, RouteMeta } from 'vue-router';
 
 interface Constructor<P, S> {
@@ -7,7 +7,7 @@ interface Constructor<P, S> {
   __isSuspense?: never;
   new (...args: any[]): { $props: P; $slots: S };
 }
-type ComponentLike<P, S extends Record<string, any>> =
+type ComponentLike<P, S extends LooseObject> =
   | FunctionalComponent<P, any, S>
   | { $props: P; $slots: S }
   | Constructor<P, S>;
@@ -20,9 +20,7 @@ type InferDefault<P, T> =
 declare global {
   /**获取 Props */
   type Props<T> =
-    T extends ComponentLike<infer P, infer S>
-      ? P & Record<string, unknown>
-      : never;
+    T extends ComponentLike<infer P, infer S> ? P & LooseObject : never;
   /**获取 Slots */
   type Slots<T> =
     T extends ComponentLike<infer P, infer S> ? Partial<S> : never;
@@ -35,4 +33,5 @@ declare global {
 
   type LooseRouteRecord = Partial<RouteRecord>;
   type NavRoute = RouteRecordRaw & { meta: RequiredByKey<RouteMeta, 'nav'> };
+  type MaybeComputed<T> = T | ComputedRef<T>;
 }

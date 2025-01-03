@@ -40,11 +40,11 @@ const _Nav = defineComponent(() => {
       value: totalEnum,
       prependIcon: mdiEmailMultipleOutline,
     },
-    ...map(groupBy(MessageType.items, 'group'), (items, name) => [
-      { type: 'subheader', name },
-      ...items.map(({ title, value: _value, icon }) => ({
-        title,
-        value: _value,
+    ...map(groupBy(MessageType.items, 'group'), (items, groupKey) => [
+      { type: 'subheader', title: groupKey },
+      ...items.map(({ text, value, icon }) => ({
+        title: text,
+        value,
         prependIcon: icon,
       })),
     ]).flat(),
@@ -53,7 +53,7 @@ const _Nav = defineComponent(() => {
     mobile.value && (
       <VAppBar
         title={
-          state.type === totalEnum ? '所有消息' : MessageType[state.type].title
+          state.type === totalEnum ? '所有消息' : MessageType[state.type].text
         }
         icon
         v-slots={{

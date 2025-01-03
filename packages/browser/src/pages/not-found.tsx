@@ -14,15 +14,19 @@ export default defineComponent(
       <VMain class="h-100 overflow-auto">
         <VEmptyState
           headline="Σ(っ °Д °;)っ, 404"
-          title="你来到了未知的页面"
+          title="假装这是一个页面"
           v-slots={{
             actions: () => [
               <VBtn
-                color="white"
                 text="回到主页"
+                variant="flat"
                 onClick={() => router.push('/')}
               />,
-              <VBtn text="返回上页" onClick={() => router.back()} />,
+              <VBtn
+                text="返回上页"
+                variant="outlined"
+                onClick={() => router.back()}
+              />,
             ],
           }}
         />

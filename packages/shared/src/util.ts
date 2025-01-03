@@ -1,5 +1,3 @@
-import type { z } from 'zod';
-
 type ObjectIterator<T, R> = (v: T[keyof T], k: string, o: T) => R;
 
 export function errorFactory<T extends boolean = true>(opts: {
@@ -195,13 +193,7 @@ export type ComposedMiddle<T extends {}> = (
 ) => MaybePromise<any>;
 export class Onion<T extends {}, K extends string = string> {
   middles;
-  readonly markers = new Proxy({} as { [P in K]: number }, {
-    get(o, k: K) {
-      const v = o[k];
-      if (typeof v !== 'number') throw new Error(`marker not found: ${k}`);
-      return v;
-    },
-  });
+  readonly markers: { [P in K]?: number } = {};
   constructor(middles: Middle<T>[] = []) {
     this.middles = [...middles];
   }
@@ -215,7 +207,7 @@ export class Onion<T extends {}, K extends string = string> {
     this.markers[name] = this.middles.length;
     return this;
   }
-  findIndex(id: K | string) {
+  getIndex(id: K | string) {
     const index =
       this.markers[id as K] ?? this.middles.findIndex((e) => e.name === id);
     if (index === -1) error(`Middle not found: ${id}`);
@@ -224,19 +216,17 @@ export class Onion<T extends {}, K extends string = string> {
   /**@see https://github.com/koajs/compose/blob/master/index.js */
   compose(): ComposedMiddle<T> {
     return (ctx, next, start = 0) => {
-      const dispatch = (index: number) => {
+      const dispatch = async (index: number) => {
         if (index === this.middles.length) return next?.();
         const middle = this.middles[index];
         try {
-          // console.log(`dispatch middle: ${middle.name}`, ctx.path);
-          return middle(ctx, () => dispatch(index + 1));
+          // console.log(`dispatch middle: ${middle.name}`);
+          return await middle(ctx, () => dispatch(index + 1));
         } catch (err) {
           console.error(`middle error: ${middle.name}`, err);
         }
       };
-      return dispatch(
-        typeof start === 'number' ? start : this.findIndex(start),
-      );
+      return dispatch(typeof start === 'number' ? start : this.getIndex(start));
     };
   }
 }
@@ -248,14 +238,4 @@ export function env<K extends keyof NodeJS.ProcessEnv>(
   const value = process.env[key] ?? defaultValue;
   if (value === void 0) throw `Environment variable not found: ${key}`;
   return value;
-}
-export function toRule(schame: z.ZodType) {
-  return async function (v: unknown) {
-    const { success, error: err } = await schame.spa(v);
-    // success || error('field validation failed', err.format()._errors);
-    return success || err.format()._errors.join('\n');
-  };
-}
-export function toFieldRules<T extends z.ZodRawShape>(schame: z.ZodObject<T>) {
-  return mapValues(schame.shape, (v) => [toRule(v)] as const);
 }

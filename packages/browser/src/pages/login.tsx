@@ -1,156 +1,139 @@
 import { mdiEyeOffOutline, mdiEyeOutline } from '@mdi/js';
-import { toFieldRules } from 'shared';
-import { apiRecords, progress, type In } from 'shared/router';
-import { defineComponent, reactive, ref, shallowRef } from 'vue';
+import { date_ts, Gender, OutputCode } from 'shared/data';
+import { apiRecords, progress } from 'shared/router';
+import { defineComponent, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { VBtn } from 'vuetify/components/VBtn';
 import { VMain } from 'vuetify/components/VMain';
 import { VTab, VTabs } from 'vuetify/components/VTabs';
-import { VTextField } from 'vuetify/components/VTextField';
-import { Container } from '~/components/container';
+import { Dialog } from '~/components/dialog';
 import { Form } from '~/components/form';
-import { OtpInput } from '~/components/forms/otp-input';
+import { OtpInput } from '~/components/otp-input';
 import { c } from '~/ts/client';
+import { usePopup } from '~/ts/hook';
 import { snackbar, storage, udata } from '~/ts/state';
 
-const PwdInput = defineComponent(() => {
+const PwdLogin = defineComponent(() => {
   const loading = ref(false);
   const showPwd = ref(false);
-  const pwd_data = reactive<In['/login/pwd']>({ phone: '', pwd: '' });
-  const pwd_validator = toFieldRules(apiRecords['/login/pwd'].in);
+  const data = reactive({ phone: '', pwd: '' });
   return () => (
     <Form
-      actions={[
-        {
-          text: '登录',
-          type: 'submit',
-          variant: 'flat',
-          block: true,
-          loading: loading.value,
-        },
-      ]}
-      onPass={() => {
-        c['/login/pwd'].with(progress(loading, 'value')).send(pwd_data, {
-          0(res) {
-            storage.setToken(res.data);
-            udata.value = res.data;
-            snackbar.show({ text: '登录成功', color: 'success' });
+      model={data}
+      schema={apiRecords['/login/pwd'].in}
+      layout={(comps) => [
+        [
+          { comp: comps.phone },
+          {
+            comp: () => (
+              <comps.pwd
+                onClick:append={() => (showPwd.value = !showPwd.value)}
+                {...(showPwd.value
+                  ? { type: 'text', appendIcon: mdiEyeOffOutline }
+                  : { type: 'password', appendIcon: mdiEyeOutline })}
+              />
+            ),
+            cols: 12,
           },
-        });
-      }}
-    >
-      <Container
-        display={[
-          [
-            {
-              cols: 12,
-              comp: () => (
-                <VTextField
-                  label="手机号"
-                  v-model={pwd_data.phone}
-                  rules={pwd_validator.phone}
-                  type="number"
-                />
-              ),
-            },
-            {
-              comp: () => (
-                <VTextField
-                  v-model={pwd_data.pwd}
-                  label="密码"
-                  rules={pwd_validator.pwd}
-                  onClick:appendInner={() => {
-                    showPwd.value = !showPwd.value;
-                  }}
-                  {...(showPwd.value
-                    ? { type: 'text', appendInnerIcon: mdiEyeOffOutline }
-                    : { type: 'password', appendInnerIcon: mdiEyeOutline })}
-                />
-              ),
-            },
-          ],
-        ]}
-      />
-    </Form>
+          {
+            comp: () => (
+              <VBtn
+                text="登录"
+                variant="flat"
+                block
+                loading={loading.value}
+                onClick={() => {
+                  c['/login/pwd'].with(progress(loading, 'value')).send(data, {
+                    0(res) {
+                      storage.setToken(res.data);
+                      udata.value = res.data;
+                      snackbar.show({ text: '登录成功', color: 'success' });
+                    },
+                  });
+                }}
+              />
+            ),
+          },
+        ],
+      ]}
+    />
   );
 });
-const _OtpInput = () => (
-  <OtpInput
-    onPass={(data, state) => {
-      c['/login/phone'].with(progress(state, 'loading')).send(data, {
-        0(res) {
-          snackbar.show({ text: '验证通过', color: 'success' });
-          storage.setToken(res.data);
-          udata.value = res.data;
+const PhoneLogin = defineComponent(() => {
+  const isValid = ref(false);
+  const signupData = reactive({
+    phone: '',
+    code: '',
+    gender: Gender.Female.value,
+    birthday: date_ts(Date.now()),
+  });
+  const signup_dialog = usePopup(Dialog, () => ({
+    content: () => (
+      <Form
+        v-model={isValid.value}
+        model={signupData}
+        schema={apiRecords['/signup'].in}
+        layout={(comps) => [
+          [{ comp: comps.gender, cols: 12 }, { comp: comps.birthday }],
+        ]}
+      />
+    ),
+    btns: [
+      {
+        text: '注册',
+        variant: 'flat' as const,
+        blick: true,
+        onClick: () => {
+          c['/signup'].send(signupData, {
+            0(res) {
+              snackbar.show({ text: '注册成功', color: 'success' });
+              signup_dialog.close();
+            },
+          });
         },
-        1(res) {},
-      });
-    }}
-  />
-);
-// const RealnameInput = defineComponent(() => {
-//   const realname_data = reactive<User.Auth>({
-//     type: CardType.IDCard.value,
-//     name: '',
-//     num: '',
-//   });
-//   const realname_validator = toFieldRules(user.auth);
-//   return () => (
-//     <Container
-//       display={[
-//         [
-//           {
-//             comp: () => (
-//               <VTextField
-//                 v-model={realname_data.name}
-//                 label="真实姓名"
-//                 rules={realname_validator.name}
-//               />
-//             ),
-//           },
-//           {
-//             cols: 12,
-//             comp: () => (
-//               <VSelect
-//                 v-model={realname_data.type}
-//                 label="证件类型"
-//                 rules={realname_validator.type}
-//                 items={CardType.items}
-//               />
-//             ),
-//           },
-//           {
-//             comp: () => (
-//               <VTextField
-//                 v-model={realname_data.num}
-//                 label="证件号"
-//                 rules={realname_validator.num}
-//               />
-//             ),
-//           },
-//         ],
-//       ]}
-//     />
-//   );
-// });
+      },
+    ],
+  }));
+  return () => (
+    <div>
+      <signup_dialog.Comp />
+      <OtpInput
+        onPass={(data, state) => {
+          c['/login/phone'].with(progress(state, 'loading')).send(data, {
+            0(res) {
+              snackbar.show({ text: '验证通过', color: 'success' });
+              storage.setToken(res.data);
+              udata.value = res.data;
+            },
+            [OutputCode.NoUser.value]() {
+              Object.assign(signupData, data);
+              signup_dialog.show();
+            },
+          });
+        }}
+      />
+    </div>
+  );
+});
 
-// const realname_dialog = usePopup(DialogForm, () => ({
-//   card: { title: '实名认证', subtitle: '本站实施全面后台实名' },
-//   content: RealnameInput,
-//   onPass: () => error('提交实名认证'),
-// }));
 const comps = [
-  { text: '密码', comp: PwdInput },
-  { text: '短信', comp: _OtpInput },
+  { text: '密码', comp: PwdLogin },
+  { text: '短信', comp: PhoneLogin },
 ];
-
 export const route: LooseRouteRecord = {};
 export default defineComponent({
   name: 'Login',
-  beforeRouteEnter(to, from) {
-    const { redirect } = to.query;
-    return !udata.value || (typeof redirect === 'string' ? redirect : '/');
-  },
+  // beforeRouteEnter(to, from) {
+  //   const { redirect } = to.query;
+  //   return !udata.value || (typeof redirect === 'string' ? redirect : '/');
+  // },
   setup() {
-    const currentIdx = shallowRef(0);
+    const router = useRouter();
+    watch(udata, (v) => {
+      const { redirect } = router.currentRoute.value.query;
+      router.push(typeof redirect === 'string' ? redirect : '/');
+    });
+    const currentIdx = ref(0);
     return () => (
       <VMain>
         <div class="center d-flex flex-column">

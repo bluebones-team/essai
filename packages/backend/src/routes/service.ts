@@ -17,7 +17,11 @@ export const tokenMgr = {
     const { promise, resolve, reject } = Promise.withResolvers<TokenPayload>();
     verify(token, tokenMgr.secret, (err, decoded) => {
       // @ts-ignore
-      err ? reject(err) : resolve(decoded);
+      err
+        ? reject(err)
+        : typeof decoded !== 'object'
+          ? reject('Invalid payload')
+          : resolve(pick(decoded, ['phone', 'uid']));
     });
     return promise;
   },
@@ -43,7 +47,7 @@ export const otpMgr = {
       const authCode = await redis.get(key);
       if (!authCode) return '验证码过期';
       if (authCode !== code) return '验证码错误';
-      await redis.del(key);
+      // await redis.del(key);
     },
   },
   email: {

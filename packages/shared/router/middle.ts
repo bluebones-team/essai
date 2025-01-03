@@ -53,7 +53,9 @@ export const b_json = Object.assign(
 export const a_batch = (opts: {
   ms: number;
   send(
-    data: Pick<Client.Context<'/batch'>, 'path' | 'input' | 'codeCbs'>,
+    data: Pick<Client.Context<'/batch'>, 'path' | 'input' | 'codeCbs'> & {
+      outMiddle: Middle<Client.Context>;
+    },
   ): void;
   ignore?(ctx: Client.Context): boolean;
 }): Middle<Client.Context> => {
@@ -73,12 +75,15 @@ export const a_batch = (opts: {
         input: inQueue.map((e) => [e.path, e.input]) as [string, any][],
         codeCbs: {
           [OutputCode.Success.value](res) {
-            try {
-              outQueue.forEach((e, i) => e.onData(res.data[i]));
-            } finally {
-              outQueue.length = 0;
-            }
+            outQueue.forEach((e, i) => e.onData(res.data[i]));
           },
+        },
+        outMiddle(ctx, next) {
+          try {
+            next();
+          } finally {
+            outQueue.length = 0;
+          }
         },
       });
       outQueue.push(...inQueue);

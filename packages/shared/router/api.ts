@@ -4,6 +4,7 @@ import {
   experiment,
   output,
   param,
+  recruitment,
   recruitment_participant,
   report,
   shared,
@@ -31,7 +32,6 @@ export type ApiRecord<
 type RawApiRecords = { [K in string]: RawApiRecords | Partial<ApiRecord> };
 
 const { phone, pwd } = user.back.shape;
-const code = z.string().length(6, '验证码长度为 6 位');
 const defaultApiRecord = {
   meta: { type: 'post', token: 'access' },
   in: z.undefined(),
@@ -49,7 +49,7 @@ const usr = {
   },
   /**修改手机号 */
   'phone/edit': {
-    in: z.object({ old: phone, new: phone, code }),
+    in: z.object({ old: phone, new: phone, code: param.code }),
   },
   email: {
     /**添加邮箱 */
@@ -81,15 +81,18 @@ const usr = {
   },
 } satisfies RawApiRecords;
 const recruit = {
-  add: {},
-  edit: {},
-  remove: {},
-  list: {},
+  add: {
+    in: recruitment.front,
+  },
+  edit: {
+    in: recruitment.front.partial(),
+  },
+  remove: {
+    in: param.rtype,
+  },
   ptc: {
     list: {
-      in: param.page
-        .merge(param.eid)
-        .extend({ filter: experiment.front.filter.data.optional() }),
+      in: param.page.merge(param.eid).merge(param.rtype),
       out: recruitment_participant.front.array(),
     },
     approve: {
@@ -114,15 +117,15 @@ const exp = {
   edit: {
     in: experiment.front.own.data.omit({ state: true }),
   },
-  publish: {
+  remove: {
     in: param.eid,
   },
-  remove: {
+  publish: {
     in: param.eid,
   },
   join: {
     in: param.eid.merge(param.rtype).extend({
-      starts: shared.timestamp.array().optional(),
+      // starts: shared.timestamp.array().optional(),
     }),
   },
   push: {
@@ -276,7 +279,7 @@ const rawApiRecords = {
     meta: { type: 'post', token: '' },
     in: user.back
       .pick({ phone: true, gender: true, birthday: true })
-      .extend({ code }),
+      .extend({ code: param.code }),
   },
   /**注销 */
   signoff: {},
@@ -298,7 +301,7 @@ const rawApiRecords = {
     /**验证码登录 */
     phone: {
       meta: { type: 'post', token: '' },
-      in: z.object({ phone, code }),
+      in: z.object({ phone, code: param.code }),
       out: user.front.own.merge(shared.token),
     },
     /**token 登录 */

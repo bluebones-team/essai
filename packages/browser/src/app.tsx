@@ -20,9 +20,9 @@ import { VNavigationDrawer } from 'vuetify/components/VNavigationDrawer';
 import { VProgressLinear } from 'vuetify/components/VProgressLinear';
 import { VTab, VTabs } from 'vuetify/components/VTabs';
 import {
-  VScrollYTransition,
   VSlideXReverseTransition,
-  VSlideYReverseTransition,
+  VSlideXTransition,
+  VSlideYTransition,
 } from 'vuetify/components/transitions';
 import { Tooltip } from 'vuetify/directives';
 import { Pic } from '~/components/pic';
@@ -99,19 +99,21 @@ function useNavTabs() {
       })),
     ),
     down: computed<NavTabProps[]>(() => [
-      udata.value
-        ? {
-            show: true,
-            path: '/setting',
-            tip: udata.value.name,
-            slot: () => <Pic {...{ size: 28, src: udata.value?.face ?? '' }} />,
-          }
-        : {
-            show: true,
-            path: '/login',
-            tip: '登录/注册',
-            icon: mdiAccountCircleOutline,
-          },
+      {
+        show: true,
+        path: '/setting',
+        ...(udata.value
+          ? {
+              tip: udata.value.name,
+              slot: () => (
+                <Pic {...{ size: 28, src: udata.value?.face ?? '' }} />
+              ),
+            }
+          : {
+              tip: '登录/注册',
+              icon: mdiAccountCircleOutline,
+            }),
+      },
     ]),
   });
 }
@@ -139,32 +141,38 @@ const NavigationBottom = defineComponent(() => {
   return () => (
     <VBottomNavigation horizontal>
       <VTabs class="w-100 h-100" direction="horizontal" grow>
-        <VSlideYReverseTransition group hideOnLeave>
+        <VSlideYTransition group hideOnLeave>
           {navBtns.top.concat(navBtns.down).map((p) => (
             <NavTab key={p.tip} {...p} />
           ))}
-        </VSlideYReverseTransition>
+        </VSlideYTransition>
       </VTabs>
     </VBottomNavigation>
   );
 });
-const RouterPage = defineComponent(() => () => (
-  <RouterView
-    v-slots={
-      {
-        default: ({ Component, route }) => [
-          Component && (
-            <VScrollYTransition appear mode="out-in">
-              <KeepAlive>
-                {h(Component, { key: route.matched[0].path })}
-              </KeepAlive>
-            </VScrollYTransition>
-          ),
-        ],
-      } satisfies Slots<typeof RouterView>
-    }
-  />
-));
+const RouterPage = defineComponent(() => {
+  const { mobile } = useDisplay();
+  const Transition = computed(() =>
+    mobile.value ? VSlideYTransition : VSlideXTransition,
+  );
+  return () => (
+    <RouterView
+      v-slots={
+        {
+          default: ({ Component, route }) => [
+            Component && (
+              <Transition.value appear mode="out-in">
+                <KeepAlive>
+                  {h(Component, { key: route.matched[0].path })}
+                </KeepAlive>
+              </Transition.value>
+            ),
+          ],
+        } satisfies Slots<typeof RouterView>
+      }
+    />
+  );
+});
 
 export const App = defineComponent(() => {
   const { mobile } = useDisplay();

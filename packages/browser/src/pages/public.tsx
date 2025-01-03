@@ -1,27 +1,23 @@
 import { mdiAccountPlusOutline } from '@mdi/js';
-import { ExperimentType, RecruitmentType, Role } from 'shared/data';
-import { computed, defineComponent, provide, watchEffect } from 'vue';
+import { ExperimentType, Role } from 'shared/data';
+import { computed, defineComponent } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VChip } from 'vuetify/components/VChip';
 import { VMain } from 'vuetify/components/VMain';
-import { Dialog } from '~/components/dialog';
-import { DialogForm } from '~/components/dialog-form';
-import { AdvancedFilter, SimpleFilter } from '~/components/proj-filter';
-import { ProjectInfo } from '~/components/proj-info';
+import { ExperimentDetail, ExperimentFilter } from '~/components/experiment';
 import { Table, type TableHeader } from '~/components/table';
 import { c } from '~/ts//client';
-import { usePopup, useExpData } from '~/ts/hook';
-import { injection, snackbar } from '~/ts/state';
+import { useExperimentData } from '~/ts/hook';
+import { snackbar } from '~/ts/state';
 
 const {
-  proj,
-  fetchExpList: fetchProjList,
+  exp,
+  fetchList: fetchExpList,
   filter,
-  fetchExpRange: fetchProjRange,
-  simpleSearch,
-  advancedSearch,
-} = useExpData('public');
+  fetchRange: fetchExpRange,
+  search,
+} = useExperimentData('public');
 
 const _Table = defineComponent(() => {
   const { mobile, xs } = useDisplay();
@@ -41,23 +37,23 @@ const _Table = defineComponent(() => {
       //@ts-ignore
       sort: (a, b) => a.key - b.key,
     },
-    {
-      title: '报酬',
-      key: `recruitments[${filter.data.rtype}].fee` as any,
-      minWidth: '6rem',
-      value: (item) => {
-        filter.data.rtype ??= RecruitmentType.Subject.value;
-        return (
-          <p key={item.recruitments[filter.data.rtype]?.fee}>
-            {item.recruitments[filter.data.rtype]
-              ? `￥ ${item.recruitments[filter.data.rtype]?.fee}`
-              : '不招'}
-          </p>
-        );
-      },
-      //@ts-ignore
-      sort: (a, b) => a.key - b.key,
-    },
+    // {
+    //   title: '报酬',
+    //   key: `recruitments[${filter.data.rtype}].fee` as any,
+    //   minWidth: '6rem',
+    //   value: (item) => {
+    //     filter.data.rtype ??= RecruitmentType.Subject.value;
+    //     return (
+    //       <p key={item.recruitments[filter.data.rtype]?.fee}>
+    //         {item.recruitments[filter.data.rtype]
+    //           ? `￥ ${item.recruitments[filter.data.rtype]?.fee}`
+    //           : '不招'}
+    //       </p>
+    //     );
+    //   },
+    //   //@ts-ignore
+    //   sort: (a, b) => a.key - b.key,
+    // },
   ];
   const headers = computed(() =>
     xs.value
@@ -80,15 +76,15 @@ const _Table = defineComponent(() => {
   return () => (
     <Table
       class={mobile.value ? 'w-100' : 'w-50'}
-      v-model={proj.preview}
-      items={proj.list}
+      v-model={exp.selected}
+      items={exp.list}
       headers={headers.value}
-      v-slots={{
+      slots={{
         toolbar: () => (
-          <SimpleFilter
-            v-model={filter.data.search}
-            onSearch={simpleSearch}
-            onShow:advanced={() => search_dialog.show()}
+          <ExperimentFilter
+            model={filter.data}
+            range={filter.range}
+            onSearch={search}
           />
         ),
         noData: () => '当前区域没有项目',
@@ -96,79 +92,18 @@ const _Table = defineComponent(() => {
     />
   );
 });
-const _Join = defineComponent(() => {
-  const recruitments = computed(() => {
-    const d = proj.data?.recruitments;
-    return d?.length ? d : snackbar.show({ text: '该项目无招募信息' });
-  });
-  function join(rtype: RecruitmentType, starts?: Shared['timestamp'][]) {
-    if (starts instanceof Event) starts = void 0;
-    const data = proj.data;
-    if (!data) return;
-    c['/exp/join'].send(
-      { eid: data.eid, rtype },
-      {
-        0(res) {
-          snackbar.show({ text: '报名成功', color: 'success' });
-        },
-      },
-    );
-  }
-  return () => (
-    <div class="center">
-      {recruitments.value?.map(({ rtype }) => {
-        const e = RecruitmentType[rtype];
-        return (
-          <VBtn text={e.title} color={e.color} onClick={() => join(rtype)} />
-        );
-      })}
-    </div>
-  );
-});
-function _Detail() {
-  return (
-    <ProjectInfo
-      v-model={proj.data}
-      onBack={detail_dialog.close}
-      actions={[
-        {
-          text: '报名',
-          prependIcon: mdiAccountPlusOutline,
-          onClick() {
-            join_dialog.show();
-          },
-        },
-      ]}
-    />
-  );
-}
-
-const detail_dialog = usePopup(Dialog, () => ({ content: _Detail }));
-const join_dialog = usePopup(Dialog, () => ({
-  card: { title: '选择参与角色' },
-  btns: [
+const join = () => {
+  if (!exp.selected)
+    return snackbar.show({ text: '请先选择项目', color: 'error' });
+  c['/exp/join'].send(
+    { eid: exp.selected.eid, rtype: filter.data.rtype },
     {
-      text: '取消',
-      variant: 'flat' as const,
-      color: 'error',
-      onClick: () => join_dialog.close(),
+      0(res) {
+        snackbar.show({ text: '报名成功', color: 'success' });
+      },
     },
-  ],
-  content: _Join,
-}));
-const search_dialog = usePopup(DialogForm, () => ({
-  card: { title: '高级搜索' },
-  form: { size: 'large' as const },
-  submitText: '确认',
-  content: () => <AdvancedFilter v-model={filter.data} range={filter.range} />,
-  onPass() {
-    advancedSearch();
-    search_dialog.close();
-  },
-}));
-watchEffect(() => {
-  if (proj.data) detail_dialog.show();
-});
+  );
+};
 
 export const route: LooseRouteRecord = {
   meta: {
@@ -186,17 +121,27 @@ export const route: LooseRouteRecord = {
 export default defineComponent({
   name: 'Public',
   beforeRouteEnter(to, from, next) {
-    Promise.allSettled([fetchProjList(), fetchProjRange()]).finally(next);
+    Promise.allSettled([fetchExpList(), fetchExpRange()]).finally(next);
   },
   setup() {
-    provide(injection.editable, false);
-    const { mobile } = useDisplay();
     return () => (
-      <VMain class="d-flex h-100 overflow-auto">
-        <search_dialog.Comp />
-        <join_dialog.Comp />
+      <VMain class="d-flex h-100">
         <_Table />
-        {mobile.value ? <detail_dialog.Comp /> : <_Detail class="w-50" />}
+        <ExperimentDetail
+          experiment={exp.selected}
+          recuitment={void 0}
+          readonly
+          slots={{
+            append: () => [
+              <VBtn
+                text="报名"
+                prependIcon={mdiAccountPlusOutline}
+                variant="outlined"
+                onClick={join}
+              />,
+            ],
+          }}
+        />
       </VMain>
     );
   },

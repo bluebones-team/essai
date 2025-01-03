@@ -3,7 +3,7 @@ import { date_ts, OutputCode } from 'shared/data';
 import type { Router } from 'shared/router';
 import { db } from '~/client';
 import { otpMgr, tokenMgr } from '~/routes/service';
-import { o } from './util';
+import { o } from '~/util';
 
 const user_own = (data: BTables['user']): FTables['user']['own'] => ({
   ...pick(data, [
@@ -24,10 +24,9 @@ export const routes: Router.Routes = {
     const errMsg = await otpMgr.phone.verify(input.phone, input.code);
     if (errMsg) return o('fail', errMsg);
     const user = await db.create('user', {
-      name: '',
-      face: '',
+      name: '张三',
+      face: `https://picsum.photos/200?t=${Date.now()}`,
       ...pick(input, ['phone', 'gender', 'birthday']),
-      uid: 1,
       created_at: date_ts(new Date()),
       emails: [],
       recruiter: false,

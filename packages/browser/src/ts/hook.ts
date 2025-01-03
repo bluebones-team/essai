@@ -1,16 +1,9 @@
-import {
-  deepClone,
-  deepIsEqual,
-  isObject,
-  mapValues,
-  pick,
-  uniqBy,
-} from 'shared';
+import { deepClone, deepIsEqual, mapValues } from 'shared';
 import {
   ExperimentState,
   RecruitmentType,
   Theme,
-  type ExperimentDataType,
+  type ExperimentFrontDataType,
 } from 'shared/data';
 import { progress } from 'shared/router';
 import {
@@ -19,12 +12,12 @@ import {
   onMounted,
   onUnmounted,
   reactive,
-  readonly,
   ref,
   shallowReactive,
   shallowRef,
   toRaw,
   toRef,
+  watch,
   watchEffect,
   type Component,
   type Ref,
@@ -63,32 +56,37 @@ export function useTheme() {
     app: computed(() => toAppTheme(setting.display.role, actual.value)),
   });
 }
-export function useComponent<T extends Component>(comp: T) {
-  const props = shallowRef<Props<T>>();
+export function useComponent<T extends Component>(
+  comp: T,
+  defaults = () => ({}) as Props<T>,
+) {
+  const props = shallowRef<Props<T>>(defaults());
   return {
-    Comp: (p: Props<T>) => h(comp, Object.assign({}, props.value, p)),
-    change: (p: Props<T>) => (props.value = p),
+    Comp: (extraProps: Props<T>) => {
+      const mergedProps = Object.assign({}, props.value, extraProps);
+      return h(comp, mergedProps, mergedProps.slots);
+    },
+    change: (newProps?: Props<T>) =>
+      (props.value = Object.assign(defaults(), newProps)),
   };
 }
 export function usePopup<T extends Component<ModelProps<boolean>>>(
   comp: T,
   defaults = () => ({}) as Props<T>,
 ) {
-  const { Comp, change } = useComponent(comp);
+  const { Comp, change } = useComponent(comp, defaults);
   const isShow = ref(false);
   return {
     Comp: () =>
-      //@ts-ignore
+      // @ts-ignore
       Comp({
         modelValue: isShow.value,
-        'onUpdate:modelValue'(v: boolean) {
-          isShow.value = v;
-        },
+        'onUpdate:modelValue': (v) => (isShow.value = v),
       }),
     isShow,
     show(e?: Parameters<typeof change>[0]) {
       isShow.value = true;
-      change(Object.assign(defaults(), e));
+      change(e);
     },
     close() {
       isShow.value = false;
@@ -129,50 +127,59 @@ export function useTempModel<T>(model: Ref<T>) {
     },
   };
 }
-export function useDefaults<T extends LooseObject, D extends Partial<T>>(
+export function useDefaultProps<T extends LooseObject, D extends Partial<T>>(
   props: T,
   defaults: D,
 ) {
-  const toVal = (k: keyof T) => {
-    const v = defaults[k];
-    return isObject(v) ? readonly(v) : v;
-  };
   return new Proxy(props as RequiredByKey<T, string & keyof D>, {
     get(o, k: string & keyof T) {
-      if (props.hasOwnProperty(k)) return props[k] ?? toVal(k);
-      error(`prop ${k} is not declared`);
+      if (props.hasOwnProperty(k)) return props[k] ?? defaults[k];
+      // error(`prop ${k} is not declared`);
     },
   });
 }
+export function useTimer() {
+  const time = ref(0);
+  return {
+    time,
+    countdown(seconds: number) {
+      time.value = seconds;
+      const interval = setInterval(() => {
+        if (--time.value <= 0) clearInterval(interval);
+      }, 1e3);
+      return () => clearInterval(interval);
+    },
+  };
+}
+export function useCombinedBoolean() {
+  const states = reactive<boolean[]>([]);
+  const combined = computed(() => states.every((s) => s));
+  return { states, combined };
+}
 
 //data
-export function useExp<T extends ExperimentDataType>(type: T) {
-  const state = reactive({
+export function useExperiment<T extends ExperimentFrontDataType>(type: T) {
+  const state = shallowReactive({
     list: [] as FTables['experiment'][T]['preview'][],
-    preview: null as FTables['experiment'][T]['preview'] | null,
-    data: null as FTables['experiment'][T]['data'] | null,
+    selected: void 0 as FTables['experiment'][T]['data'] | undefined,
     page: { ps: 20, pn: 1 },
   });
-  watchEffect(() => {
-    if (!state.preview) return;
-    c[`/exp/${type}/sup`].with(progress(showProgressbar, 'value')).send(
-      { eid: state.preview.eid },
-      {
-        //@ts-ignore
-        0(res) {
-          const data: NonNullable<typeof state.data> = Object.assign(
-            res.data,
-            state.preview,
-          );
-          data.recruitments = uniqBy(
-            data.recruitments,
-            (e) => e.rtype,
-          ).toSorted((a, b) => a.rtype - b.rtype);
-          state.data = data;
+
+  watch(
+    () => state.selected,
+    (value) => {
+      if (!value) return;
+      c[`/exp/${type}/sup`].with(progress(showProgressbar, 'value')).send(
+        { eid: value.eid },
+        {
+          //@ts-ignore
+          0(res) {
+            Object.assign(value, res.data);
+          },
         },
-      },
-    );
-  });
+      );
+    },
+  );
   function fetchList(
     filterData: FTables['experiment']['filter']['data'] = {
       rtype: RecruitmentType.Subject.value,
@@ -193,29 +200,28 @@ export function useExp<T extends ExperimentDataType>(type: T) {
     fetchList,
   };
 }
-export function useExpFilter<T extends ExperimentDataType>(type: T) {
-  const toDefaultRange = () =>
-    ({
-      duration_range: [0, 100],
-      times_range: [0, 100],
-      fee_range: [0, 100],
-    }) as FTables['experiment']['filter']['range'];
-  const state = reactive({
+export function useExperimentFilter<T extends ExperimentFrontDataType>(
+  type: T,
+) {
+  const toDefaultRange = (): FTables['experiment']['filter']['range'] => ({
+    duration_range: [1, 100] as [Shared['duration'], Shared['duration']],
+    times_range: [1, 100],
+    fee_range: [1, 100],
+  });
+  const state = reactive<FTables['experiment']['filter']>({
     range: toDefaultRange(),
     data: {
       rtype: RecruitmentType.Subject.value,
-      state: ExperimentState.Passed.value,
+      state: ExperimentState.Ready.value,
       ...toDefaultRange(),
-    } as RequiredByKey<FTables['experiment']['filter']['data'], 'state'>,
+    },
   });
   function fetchRange() {
-    if (type !== 'public') {
-      snackbar.show({
+    if (type !== 'public')
+      return snackbar.show({
         text: `not supported fetch ${type} range, only public`,
         color: 'error',
       });
-      return;
-    }
     return c[`/exp/${'public'}/range`]
       .with(progress(showProgressbar, 'value'))
       .send(void 0, {
@@ -231,8 +237,8 @@ export function useExpFilter<T extends ExperimentDataType>(type: T) {
     fetchRange,
   };
 }
-export function useRecruitPtc(
-  exp: Ref<FTables['experiment'][ExperimentDataType]['preview'] | null>,
+export function useRecruitmentParticipant(
+  exp: Ref<FTables['experiment'][ExperimentFrontDataType]['data'] | undefined>,
 ) {
   const state = reactive({
     list: [] as FTables['recruitment_participant'][],
@@ -251,7 +257,7 @@ export function useRecruitPtc(
       .send(
         {
           ...state.page,
-          filter: { rtype: state.rtype },
+          rtype: state.rtype,
           eid: exp.value.eid,
         },
         {
@@ -266,23 +272,21 @@ export function useRecruitPtc(
     fetchList,
   };
 }
-export function useExpData<T extends ExperimentDataType>(type: T) {
-  const exp = useExp(type);
-  const filter = useExpFilter(type);
-  const ptc = useRecruitPtc(toRef(exp.state, 'preview'));
+export function useExperimentData<T extends ExperimentFrontDataType>(type: T) {
+  const exp = useExperiment(type);
+  const filter = useExperimentFilter(type);
+  const ptc = useRecruitmentParticipant(toRef(exp.state, 'selected'));
   return {
-    proj: exp.state,
-    fetchExpList: exp.fetchList,
+    exp: exp.state,
+    fetchList: exp.fetchList,
     filter: filter.state,
-    fetchExpRange: filter.fetchRange,
-    simpleSearch: () =>
-      exp.fetchList(pick(filter.state.data, ['search', 'rtype'])),
-    advancedSearch: () => exp.fetchList(filter.state.data),
+    fetchRange: filter.fetchRange,
+    search: () => exp.fetchList(filter.state.data),
     ptc: ptc.state,
     fetchPtcList: ptc.fetchList,
   };
 }
-export function useUserPtc() {
+export function useUserParticipant() {
   const state = reactive({
     list: [] as FTables['user_participant'][],
     selected: [] as FTables['user_participant'][],

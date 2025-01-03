@@ -12,7 +12,7 @@ import { zocker } from 'zocker';
 import { db } from '~/client';
 import { tokenMgr } from '~/routes/service';
 import { routes } from './api';
-import { o } from './util';
+import { o } from '../util';
 
 declare module 'shared/router' {
   namespace Router {

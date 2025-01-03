@@ -1,6 +1,4 @@
 import { errorFactory, pick } from 'shared';
-import { computed } from 'vue';
-import type { Primitive } from 'zod';
 
 export const error = errorFactory({
   console: true,
@@ -11,9 +9,6 @@ export const error = errorFactory({
     snackbar.show({ text: msg, color: 'error' });
   },
 });
-export function toComputed<T extends Primitive>(e: MaybeGetter<T>) {
-  return typeof e === 'function' ? computed(e) : { value: e };
-}
 export function createDefaultPropertyProxy<T>(getDefaultValue: () => T) {
   return new Proxy({} as Record<string | symbol, T>, {
     get(o, p) {

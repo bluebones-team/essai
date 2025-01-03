@@ -4,21 +4,13 @@ import {
   mdiLogout,
   mdiSquareEditOutline,
 } from '@mdi/js';
-import { pick, toFieldRules } from 'shared';
 import { Gender } from 'shared/data';
-import { apiRecords, progress, type In } from 'shared/router';
-import {
-  computed,
-  defineAsyncComponent,
-  defineComponent,
-  reactive,
-  ref,
-} from 'vue';
+import { apiRecords, progress } from 'shared/router';
+import { computed, defineComponent, reactive, ref } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
-import { VTextField } from 'vuetify/components/VTextField';
-import { Container, type ContainerDisplay } from '~/components/container';
-import { DialogForm } from '~/components/dialog-form';
+import { Dialog } from '~/components/dialog';
+import { Form } from '~/components/form';
 import { Pic } from '~/components/pic';
 import { SectionGroup } from '~/components/section-group';
 import { c } from '~/ts/client';
@@ -27,50 +19,43 @@ import { usePopup } from '~/ts/hook';
 import { storage, udata } from '~/ts/state';
 import { error } from '~/ts/util';
 
-const rules = toFieldRules(apiRecords['/usr/edit'].in);
-/**编辑框 */
-function editInput(data: In['/usr/edit']) {
-  const { promise, resolve } = Promise.withResolvers<string[]>();
-  // c['/usr/face/list'].send(void 0,{
-  //   0: (res) => resolve(res.data),
-  // });
-  const display: ContainerDisplay = [
-    [
-      {
-        comp: () =>
-          udata.value ? (
-            <VTextField v-model={data.name} label="昵称" rules={rules.name} />
-          ) : null,
-      },
-      {
-        cols: 12,
-        comp: defineAsyncComponent(async () => {
-          const links = await promise;
-          return () => (
-            <div class="d-grid grid-cols-3 ga-4">
-              {links.map((e) => (
-                <Pic src={e} />
-              ))}
-            </div>
-          );
-        }),
-      },
-    ],
-  ];
-  return () => <Container display={display} />;
-}
 /**编辑用户信息 */
-function editBtn() {
+const EditBtn = defineComponent(function () {
   if (!udata.value) return error('用户未登录');
   const loading = ref(false);
-  const data = reactive(pick(udata.value, ['name', 'face']));
-  const edit_dialog = usePopup(DialogForm, () => ({
-    form: { size: 'small' as const },
-    content: editInput(data),
-    submitText: '更新',
-    onPass() {
-      c['/usr/edit'].with(progress(loading, 'value')).send(data);
-    },
+  const data = reactive({});
+  const isValid = ref(false);
+  const dialog = usePopup(Dialog, () => ({
+    content: () => (
+      <Form
+        v-model={isValid.value}
+        model={data}
+        schema={apiRecords['/usr/edit'].in}
+        layout={(comps) => [
+          [
+            { comp: udata.value ? comps.name : () => null },
+            {
+              cols: 12,
+              comp: () => (
+                <div class="d-grid grid-cols-3 ga-4">
+                  {[].map((e) => (
+                    <Pic src={e} />
+                  ))}
+                </div>
+              ),
+            },
+          ],
+        ]}
+      />
+    ),
+    btns: [
+      {
+        text: '更新',
+        onClick: () =>
+          isValid.value &&
+          c['/usr/edit'].with(progress(loading, 'value')).send(data),
+      },
+    ],
   }));
   return () => (
     <VBtn
@@ -79,14 +64,14 @@ function editBtn() {
         icon: mdiSquareEditOutline,
         loading: loading.value,
         onClick() {
-          edit_dialog.show();
+          dialog.show();
         },
       }}
     />
   );
-}
+});
 /**注销 */
-function deleteUserBtn() {
+const DeleteUserBtn = defineComponent(function () {
   const loading = ref(false);
   return () => (
     <VBtn
@@ -107,9 +92,9 @@ function deleteUserBtn() {
       }}
     />
   );
-}
+});
 /**退出登录 */
-function logoutBtn() {
+const LogoutBtn = defineComponent(function () {
   const loading = ref(false);
   return () => (
     <VBtn
@@ -126,7 +111,7 @@ function logoutBtn() {
       }}
     />
   );
-}
+});
 
 export const route: LooseRouteRecord = {
   meta: {
@@ -151,7 +136,7 @@ export default defineComponent(
           items: [
             {
               title: udata.value.name,
-              subtitle: `${dateFormat(udata.value.birthday)} ${Gender[udata.value.gender].title}`,
+              subtitle: `${dateFormat(udata.value.birthday)} ${Gender[udata.value.gender].text}`,
               horizontal: !mobile.value,
               prepend: () => (
                 <Pic
@@ -164,9 +149,9 @@ export default defineComponent(
               ),
               comp: () => (
                 <div class="d-flex ga-2 align-center">
-                  {editBtn()()}
-                  {deleteUserBtn()()}
-                  {logoutBtn()()}
+                  <EditBtn />
+                  <DeleteUserBtn />
+                  <LogoutBtn />
                 </div>
               ),
             },

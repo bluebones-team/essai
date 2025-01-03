@@ -43,14 +43,17 @@ export function createClient(opts: {
     .use(
       zodCheck({
         type: 'in',
-        onFail: (ctx, reason) => opts.error(`${ctx.path} in`, reason),
+        onFail: (ctx, reason) =>
+          opts.error(`${ctx.path} 请求数据校验失败`, reason),
       }),
     )
     .use(
       a_batch({
         ms: 2e2,
-        send: ({ path, input, codeCbs }) =>
-          new ProxyClient(path).send(input, codeCbs),
+        send({ path, input, codeCbs, outMiddle }) {
+          client.out.with(outMiddle);
+          new ProxyClient(path).send(input, codeCbs);
+        },
         ignore: (ctx) => ctx.api.meta.type === 'ws',
       }),
     )
@@ -62,16 +65,16 @@ export function createClient(opts: {
     .use(
       zodCheck({
         type: 'out',
-        onFail: (ctx, reason) => opts.error(`${ctx.path} out`, reason),
+        onFail: (ctx, reason) =>
+          opts.error(`${ctx.path} 响应数据校验失败`, reason),
       }),
     )
     .mark('with')
     .use(function callCodeCbs(ctx, next) {
       const cb = ctx.codeCbs[ctx.output.code];
-      if (!cb)
-        console.warn(`${ctx.path} no code callback for ${ctx.output.code}`);
+      if (!cb) return opts.error(OutputCode.NoUser.msg);
       //@ts-ignore
-      cb?.(ctx.output);
+      cb(ctx.output);
     });
   class ProxyClient<P extends Path> {
     constructor(public path: P) {

@@ -1,20 +1,17 @@
-import { toComputed } from '~/ts/util';
-import { defineComponent, type Component } from 'vue';
+import { defineComponent, toValue, type VNode } from 'vue';
 import { VCol, VContainer, VRow } from 'vuetify/components/VGrid';
 
-export type ContainerDisplay = {
-  cols?: MaybeGetter<number | undefined>;
-  comp: Component;
+export type ContainerLayout = {
+  cols?: MaybeGetter<number>;
+  comp: () => VNode | null;
 }[][];
-
 export const Container = defineComponent(
-  (p: { display: ContainerDisplay }) => () => (
-    <VContainer class="pb-0">
-      {p.display.map((configs) => (
+  (p: { layout: ContainerLayout }) => () => (
+    <VContainer>
+      {p.layout.map((configs) => (
         <VRow>
           {configs.map(({ cols, comp }) => (
-            //@ts-ignore
-            <VCol cols={toComputed(cols).value} v-slots={{ default: comp }} />
+            <VCol cols={toValue(cols)} v-slots={{ default: comp }} />
           ))}
         </VRow>
       ))}
