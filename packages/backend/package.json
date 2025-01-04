@@ -17,11 +17,10 @@
   },
   "dependencies": {
     "@alicloud/dysmsapi20170525": "2.0.24",
+    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "koa": "^2.15.3",
-    "koa-helmet": "^7.0.2",
-    "koa-pino-logger": "^4.0.0",
     "pg": "^8.13.1",
+    "pino": "^9.6.0",
     "redis": "^4.7.0",
     "shared": "workspace:*",
     "ws": "^8.18.0",

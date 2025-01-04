@@ -1,8 +1,8 @@
 import { pick } from 'shared';
 import { date_ts, OutputCode } from 'shared/data';
-import type { Router } from 'shared/router';
+import { type Router } from 'shared/router';
 import { db } from '~/client';
-import { otpMgr, tokenMgr } from '~/routes/service';
+import { otpMgr, tokenMgr } from '~/router/service';
 import { o } from '~/util';
 
 const user_own = (data: BTables['user']): FTables['user']['own'] => ({
@@ -31,7 +31,7 @@ export const routes: Router.Routes = {
       emails: [],
       recruiter: false,
     });
-    return o('succ');
+    return o('succ', Object.assign(tokenMgr.create(user), user_own(user)));
   },
   async '/signoff'({ input, user }) {
     const data = await db.delete('user', user);
@@ -53,9 +53,11 @@ export const routes: Router.Routes = {
     return o('succ', Object.assign(tokenMgr.create(user), user_own(user)));
   },
   async '/login/token'({ input, user }) {
+    if (!user) return o(OutputCode.Unauthorizen.value);
     return o('succ', user_own(user));
   },
   async '/token/refresh'({ input, user }) {
+    if (!user) return o(OutputCode.Unauthorizen.value);
     return o('succ', tokenMgr.create(user));
   },
   async '/otp/phone'({ input }) {
@@ -70,12 +72,14 @@ export const routes: Router.Routes = {
     return o('succ');
   },
   async '/usr/pwd/edit'({ input, user }) {
+    if (!user) return o(OutputCode.Unauthorizen.value);
     const { old: oldPwd, new: newPwd } = input;
     if (user.pwd && user.pwd !== oldPwd) return o('fail', '旧密码错误');
     await db.update('user', { pwd: newPwd });
     return o('succ');
   },
   async '/usr/phone/edit'({ input, user }) {
+    if (!user) return o(OutputCode.Unauthorizen.value);
     const { old: oldPhone, new: newPhone, code } = input;
     if ((await db.read('user', { phone: newPhone })).length)
       return o('fail', '手机号已被注册');

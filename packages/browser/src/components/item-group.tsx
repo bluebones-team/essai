@@ -6,7 +6,7 @@ export const ItemGroup = defineComponent(function <T, U extends boolean>(
   p: {
     mandatory?: boolean;
     multiple?: U;
-    items: { value: T; comp: Slots<VItem>['default'] }[];
+    items: { value: T; comp: Slots<typeof VItem>['default'] }[];
   } & {
     modelValue?: T;
     'onUpdate:modelValue'?: (v: T) => void;

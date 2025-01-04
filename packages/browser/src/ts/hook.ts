@@ -70,10 +70,14 @@ export function useComponent<T extends Component>(
       (props.value = Object.assign(defaults(), newProps)),
   };
 }
-export function usePopup<T extends Component<ModelProps<boolean>>>(
-  comp: T,
-  defaults = () => ({}) as Props<T>,
-) {
+export function usePopup<
+  T extends Component<{
+    $props: {
+      modelValue?: boolean;
+      'onUpdate:modelValue'?: (v: boolean) => void;
+    };
+  }>,
+>(comp: T, defaults = () => ({}) as Props<T>) {
   const { Comp, change } = useComponent(comp, defaults);
   const isShow = ref(false);
   return {
@@ -84,7 +88,7 @@ export function usePopup<T extends Component<ModelProps<boolean>>>(
         'onUpdate:modelValue': (v) => (isShow.value = v),
       }),
     isShow,
-    show(e?: Parameters<typeof change>[0]) {
+    show(e?: Props<T>) {
       isShow.value = true;
       change(e);
     },
@@ -252,20 +256,18 @@ export function useRecruitmentParticipant(
   function fetchList() {
     if (!exp.value)
       return snackbar.show({ text: '请选择项目', color: 'error' });
-    return c['/exp/recruit/ptc/list']
-      .with(progress(showProgressbar, 'value'))
-      .send(
-        {
-          ...state.page,
-          rtype: state.rtype,
-          eid: exp.value.eid,
+    return c['/recruit/ptc/list'].with(progress(showProgressbar, 'value')).send(
+      {
+        ...state.page,
+        rtype: state.rtype,
+        eid: exp.value.eid,
+      },
+      {
+        0(res) {
+          state.list = res.data;
         },
-        {
-          0(res) {
-            state.list = res.data;
-          },
-        },
-      );
+      },
+    );
   }
   return {
     state,

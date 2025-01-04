@@ -82,7 +82,7 @@ export const List = defineComponent(function <T>(
     modelValue?: T;
     'onUpdate:modelValue'?: (value: T) => void;
   },
-  { slots: _slots }: { slots: Slots<VList> },
+  { slots: _slots }: { slots: Slots<typeof VList> },
 ) {
   const model = useModel(_p, 'modelValue');
   const p = useDefaultProps(_p, { type: 'default' });

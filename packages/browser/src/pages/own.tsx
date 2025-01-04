@@ -242,7 +242,7 @@ const _PtcList = () => {
                 size="small"
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
-                  c['/exp/recruit/ptc/approve'].send(
+                  c['/recruit/ptc/approve'].send(
                     { rtype: ptc.rtype, uid: item.uid },
                     { 0(res) {} },
                   );
@@ -255,7 +255,7 @@ const _PtcList = () => {
                 size="small"
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
-                  c['/exp/recruit/ptc/reject'].send(
+                  c['/recruit/ptc/reject'].send(
                     { rtype: ptc.rtype, uid: item.uid },
                     {
                       0(res) {

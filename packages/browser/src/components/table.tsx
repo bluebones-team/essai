@@ -24,7 +24,7 @@ export type TableHeader<T> = {
   [x: string]: any;
 };
 export type TableSlots<
-  T extends Slots<VDataTableVirtual> = Slots<VDataTableVirtual>,
+  T extends Slots<typeof VDataTableVirtual> = Slots<typeof VDataTableVirtual>,
 > = Partial<{
   toolbar(...e: Parameters<NonNullable<T['top']>>): VNodeChild;
   groupChip(item: any): VNodeChild;
@@ -50,7 +50,7 @@ export const Table = defineComponent(function <
     'onUpdate:modelValue'?: (v: V) => void;
   },
 ) {
-  const itemSlots: (item: T) => Slots<VItem> = (item) => ({
+  const itemSlots: (item: T) => Slots<typeof VItem> = (item) => ({
     default: ({ isSelected, toggle }) => [
       withDirectives(
         <tr
@@ -72,7 +72,7 @@ export const Table = defineComponent(function <
       ),
     ],
   });
-  const tableSlots: Slots<VDataTableVirtual> = {
+  const tableSlots: Slots<typeof VDataTableVirtual> = {
     top: (e) => [<VToolbar>{p.slots?.toolbar?.(e)}</VToolbar>],
     'header.data-table-group': (e) => [],
     'group-header': ({ item, columns, toggleGroup, isGroupOpen }) => [

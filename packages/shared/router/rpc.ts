@@ -37,9 +37,7 @@ export class Client {
   };
   in = new Client.Flow();
   out = new Client.Flow();
-  send<const P extends keyof T>(
-    ...[ctx, ...e]: Parameters<ComposedMiddle<Client.LeastContext<P>>>
-  ) {
+  createContext<P extends keyof T = keyof T>(ctx: Client.LeastContext<P>) {
     const _ctx = ctx as unknown as Client.Context;
     _ctx.onData ??= (() => {
       const run = this.out.compose();
@@ -49,7 +47,12 @@ export class Client {
       };
     })();
     _ctx.onError ??= console.error;
-    return this.in.compose()(_ctx, ...e);
+    return _ctx;
+  }
+  send<P extends keyof T>(
+    ...[ctx, ...e]: Parameters<ComposedMiddle<Client.LeastContext<P>>>
+  ) {
+    return this.in.compose()(this.createContext(ctx), ...e);
   }
 }
 
@@ -60,42 +63,28 @@ export declare namespace Router {
   ) => MaybePromise<T[P]['out']>;
   type Routes = { [P in keyof T]?: Handler<P> };
   interface Options {
-    createContext(ctx: unknown): Context;
     routes: Routes;
+    onNoRoute(ctx: Context): void;
   }
 }
-export class Router extends Onion<Router.Context, 'handle'> {
-  private opts: Router.Options;
-  constructor(opts: Partial<Router.Options> = {}) {
+export class Router extends Onion<Router.Context> {
+  constructor(private opts: Router.Options) {
     super();
-    this.opts = Object.assign(
-      { createContext: (ctx: any) => ctx, routes: {} },
-      opts,
-    );
-    this.use(async function (ctx, next) {
-      ctx.output = await next();
+    this.use(async (ctx, next) => {
+      const output = await next();
+      ctx.output ??= output;
     });
   }
-  route<P extends keyof T>(path: P, handler: Router.Handler<P>) {
-    //@ts-ignore
-    this.opts.routes[path] = handler;
-    return this;
-  }
-  private static handle(routes: Router.Routes): Middle<Router.Context> {
-    return async (ctx, next) => {
-      const handler = routes[ctx.path];
-      //@ts-ignore
-      return await (handler ? handler.call(routes, ctx) : next());
-    };
-  }
   compose(): ComposedMiddle<Router.Context> {
+    const { routes } = this.opts;
     const middles = [...this.middles];
-    middles.splice(
-      this.markers.handle ?? middles.length,
-      0,
-      Router.handle(this.opts.routes),
-    );
-    const middle = new Onion(middles).compose();
-    return (ctx, ...e) => middle(this.opts.createContext(ctx), ...e);
+    middles.push(async (ctx) => {
+      const handler = routes[ctx.path];
+      return handler
+        ? //@ts-ignore
+          await handler.call(routes, ctx)
+        : this.opts.onNoRoute(ctx);
+    });
+    return new Onion(middles).compose();
   }
 }

@@ -99,7 +99,7 @@ export function createClient(opts: {
             new ProxyClient('/token/refresh').send(void 0, {
               [OutputCode.Success.value](res) {
                 opts.setToken(res.data);
-                client.send(ctx);
+                opts.send(client.createContext(ctx));
               },
               [OutputCode.Unauthorizen.value]() {
                 opts.error('请重新登录');

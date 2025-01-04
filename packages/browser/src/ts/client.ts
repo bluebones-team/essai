@@ -19,20 +19,20 @@ export const c = createClient({
       ws.addEventListener('error', (event) => {
         ctx.onError(event);
       });
-      return;
+    } else {
+      fetch(`${host}${ctx.path}`, {
+        method: meta.type,
+        headers: {
+          Authorization: meta.token && storage.get(meta.token),
+          // 'Content-Type': 'application/json',
+        },
+        body: ctx.input as string,
+        signal: ctx.signal,
+      })
+        .then((res) => res.text())
+        //@ts-ignore
+        .then(ctx.onData, ctx.onError);
     }
-    fetch(`${host}${ctx.path}`, {
-      method: meta.type,
-      headers: {
-        Authorization: meta.token && storage.get(meta.token),
-        // 'Content-Type': 'application/json',
-      },
-      body: ctx.input as string,
-      signal: ctx.signal,
-    })
-      .then((res) => res.text())
-      //@ts-ignore
-      .then(ctx.onData, ctx.onError);
   },
   error,
   setToken: (d) => storage.setToken(d),

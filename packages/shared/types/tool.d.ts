@@ -39,7 +39,10 @@ type DeepOmit<T, U> = T extends U
   : T;
 type RequiredByKey<T, K extends keyof T> = Required<Pick<T, K>> & Omit<T, K>;
 type PartialByKey<T, K extends keyof T> = Partial<Pick<T, K>> & Omit<T, K>;
-type PickByValue<T, U> = { [K in keyof T]: T[K] extends U ? T[K] : never };
+type PickByValue<T, U> = Pick<
+  T,
+  { [K in keyof T]: T[K] extends U ? K : never }[keyof T]
+>;
 type NonReadonly<T> = { -readonly [P in keyof T]: T[P] };
 //#endregion object
 

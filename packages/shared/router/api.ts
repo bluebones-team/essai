@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { each } from '..';
+import { mapValues } from '..';
 import {
   experiment,
   output,
@@ -29,7 +29,7 @@ export type ApiRecord<
   /**response schema */
   out: Out;
 };
-type RawApiRecords = { [K in string]: RawApiRecords | Partial<ApiRecord> };
+type RawApiRecords = { [K in `/${Lowercase<string>}`]: Partial<ApiRecord> };
 
 const { phone, pwd } = user.back.shape;
 const defaultApiRecord = {
@@ -38,292 +38,255 @@ const defaultApiRecord = {
   out: z.undefined(),
 } satisfies ApiRecord;
 
+const account = {
+  /**注册 */
+  '/signup': {
+    meta: { type: 'post', token: '' },
+    in: user.back
+      .pick({ phone: true, gender: true, birthday: true })
+      .extend({ code: param.code }),
+    out: user.front.own.merge(shared.token),
+  },
+  /**注销 */
+  '/signoff': {},
+  '/token/refresh': {
+    meta: { type: 'post', token: 'refresh' },
+    out: shared.token,
+  },
+  '/batch': {
+    in: z.tuple([z.string(), z.any()]).array().min(2),
+    out: output().array().min(2),
+  },
+  /**密码登录 */
+  '/login/pwd': {
+    meta: { type: 'post', token: '' },
+    in: z.object({ phone, pwd }),
+    out: user.front.own.merge(shared.token),
+  },
+  /**验证码登录 */
+  '/login/phone': {
+    meta: { type: 'post', token: '' },
+    in: z.object({ phone, code: param.code }),
+    out: user.front.own.merge(shared.token),
+  },
+  /**token 登录 */
+  '/login/token': {
+    out: user.front.own,
+  },
+  '/otp/phone': {
+    meta: { type: 'post', token: '' },
+    in: phone,
+  },
+  '/otp/email': {
+    in: z.string().email(),
+  },
+} satisfies RawApiRecords;
 const usr = {
   /**更改基本信息 */
-  edit: {
+  '/usr/edit': {
     in: user.front.editable.partial(),
   },
   /**修改密码 */
-  'pwd/edit': {
+  '/usr/pwd/edit': {
     in: z.object({ old: pwd, new: pwd }),
   },
   /**修改手机号 */
-  'phone/edit': {
+  '/usr/phone/edit': {
     in: z.object({ old: phone, new: phone, code: param.code }),
   },
-  email: {
-    /**添加邮箱 */
-    add: {
-      in: z.string().email(),
-    },
-    /**删除邮箱 */
-    remove: {
-      in: z.string().email(),
-    },
-    /**退订邮件消息 */
-    unsubscribe: {
-      meta: { type: 'get', token: '' },
-    },
+  /**添加邮箱 */
+  '/usr/email/add': {
+    in: z.string().email(),
   },
-  ptc: {
-    list: {
-      in: param.page.extend({
-        filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
-      }),
-      out: user_participant.front.array(),
-    },
-    add: {
-      in: param.uid.merge(param.rtype),
-    },
-    remove: {
-      in: param.uid.merge(param.rtype),
-    },
+  /**删除邮箱 */
+  '/usr/email/remove': {
+    in: z.string().email(),
+  },
+  /**退订邮件消息 */
+  '/usr/email/unsubscribe': {
+    meta: { type: 'get', token: '' },
+  },
+  /**参与者库 */
+  '/usr/ptc/list': {
+    in: param.page.extend({
+      filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
+    }),
+    out: user_participant.front.array(),
+  },
+  '/usr/ptc/add': {
+    in: param.uid.merge(param.rtype),
+  },
+  '/usr/ptc/remove': {
+    in: param.uid.merge(param.rtype),
   },
 } satisfies RawApiRecords;
 const recruit = {
-  add: {
+  '/recruit/add': {
     in: recruitment.front,
   },
-  edit: {
+  '/recruit/edit': {
     in: recruitment.front.partial(),
   },
-  remove: {
+  '/recruit/remove': {
     in: param.rtype,
   },
-  ptc: {
-    list: {
-      in: param.page.merge(param.eid).merge(param.rtype),
-      out: recruitment_participant.front.array(),
-    },
-    approve: {
-      in: param.rtype.merge(param.uid),
-    },
-    reject: {
-      in: param.rtype.merge(param.uid),
-    },
-    /**更改日程 */
-    // 'event': {
-    //   in: param.uid
-    //     .merge(param.rtype)
-    //     .extend({ starts: shared.timestamp.array() }),
-    // },
+  '/recruit/ptc/list': {
+    in: param.page.merge(param.eid).merge(param.rtype),
+    out: recruitment_participant.front.array(),
   },
+  '/recruit/ptc/approve': {
+    in: param.rtype.merge(param.uid),
+  },
+  '/recruit/ptc/reject': {
+    in: param.rtype.merge(param.uid),
+  },
+  /**更改日程 */
+  // 'event': {
+  //   in: param.uid
+  //     .merge(param.rtype)
+  //     .extend({ starts: shared.timestamp.array() }),
+  // },
 } satisfies RawApiRecords;
 const exp = {
-  recruit,
-  add: {
+  '/exp/add': {
     out: experiment.front.own.data,
   },
-  edit: {
+  '/exp/edit': {
     in: experiment.front.own.data.omit({ state: true }),
   },
-  remove: {
+  '/exp/remove': {
     in: param.eid,
   },
-  publish: {
+  '/exp/publish': {
     in: param.eid,
   },
-  join: {
+  '/exp/join': {
     in: param.eid.merge(param.rtype).extend({
       // starts: shared.timestamp.array().optional(),
     }),
   },
-  push: {
+  '/exp/push': {
     in: param.eid.merge(param.rtype).extend({
       uids: param.uid.shape.uid.array(),
     }),
   },
   /**公开项目 */
-  public: {
-    '': {
-      meta: { type: 'post', token: '' },
-      in: param.eid,
-      out: experiment.front.public.data,
-    },
-    sup: {
-      meta: { type: 'post', token: '' },
-      in: param.eid,
-      out: experiment.front.public.supply,
-    },
-    list: {
-      meta: { type: 'post', token: '' },
-      in: param.page.extend({
-        filter: experiment.front.filter.data.omit({ state: true }).optional(),
-      }),
-      out: experiment.front.public.preview.array(),
-    },
-    /**公开项目范围 */
-    range: {
-      out: experiment.front.filter.range,
-    },
+  '/exp/public': {
+    meta: { type: 'post', token: '' },
+    in: param.eid,
+    out: experiment.front.public.data,
+  },
+  '/exp/public/sup': {
+    meta: { type: 'post', token: '' },
+    in: param.eid,
+    out: experiment.front.public.supply,
+  },
+  '/exp/public/list': {
+    meta: { type: 'post', token: '' },
+    in: param.page.extend({
+      filter: experiment.front.filter.data.omit({ state: true }).optional(),
+    }),
+    out: experiment.front.public.preview.array(),
+  },
+  /**公开项目范围 */
+  '/exp/public/range': {
+    out: experiment.front.filter.range,
   },
   /**用户参与的项目 */
-  joined: {
-    '': {
-      in: param.eid,
-      out: experiment.front.joined.data,
-    },
-    sup: {
-      in: param.eid,
-      out: experiment.front.joined.supply,
-    },
-    list: {
-      in: param.page.extend({
-        filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
-      }),
-      out: experiment.front.joined.preview.array(),
-    },
+  '/exp/joined': {
+    in: param.eid,
+    out: experiment.front.joined.data,
+  },
+  '/exp/joined/sup': {
+    in: param.eid,
+    out: experiment.front.joined.supply,
+  },
+  '/exp/joined/list': {
+    in: param.page.extend({
+      filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
+    }),
+    out: experiment.front.joined.preview.array(),
   },
   /**用户创建的项目 */
-  own: {
-    '': {
-      in: param.eid,
-      out: experiment.front.own.data,
-    },
-    sup: {
-      in: param.eid,
-      out: experiment.front.own.supply,
-    },
-    list: {
-      in: param.page.extend({
-        filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
-      }),
-      out: experiment.front.own.preview.array(),
-    },
+  '/exp/own': {
+    in: param.eid,
+    out: experiment.front.own.data,
+  },
+  '/exp/own/sup': {
+    in: param.eid,
+    out: experiment.front.own.supply,
+  },
+  '/exp/own/list': {
+    in: param.page.extend({
+      filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
+    }),
+    out: experiment.front.own.preview.array(),
   },
 } satisfies RawApiRecords;
 const msg = {
-  stream: {
+  '/msg/stream': {
     meta: { type: 'ws', token: '' }, // debug only
     out: shared.message,
   },
-  list: {
+  '/msg/list': {
     in: param.page,
     out: shared.message.array(),
   },
-  read: {
+  '/msg/read': {
     in: param.uid.extend({ mid: shared.message.shape.mid }),
   },
 } satisfies RawApiRecords;
 /**举报 */
 const rpt = {
-  exp: {
+  '/rpt/exp': {
     in: report.experiment,
   },
-  user: {
+  '/rpt/user': {
     in: report.user,
   },
 } satisfies RawApiRecords;
-const sched = {
-  /**公开项目日程 */
-  // 'public': {
-  //   in: param.eid.merge(param.rtype),
-  //   out: experiment.front.public.schedule
-  //     .omit({ eid: true, rtype: true })
-  //     .array(),
-  // },
-  // 'joined': {
-  //   in: param.eid.merge(param.rtype),
-  //   out: experiment.front.joined.schedule
-  //     .omit({ eid: true, rtype: true })
-  //     .array(),
-  // },
-  // 'own': {
-  //   in: param.eid.merge(param.rtype),
-  //   out: experiment.front.own.schedule.omit({ eid: true, rtype: true }).array(),
-  // },
-  // 'joined/all': {
-  //   out: experiment.front.joined.schedule.array(),
-  // },
-  // 'own/all': {
-  //   out: experiment.front.own.schedule.array(),
-  // },
-} satisfies RawApiRecords;
-
-type MergeApiRecord<T extends Partial<ApiRecord>> =
-  Merge<typeof defaultApiRecord, T> extends infer R extends ApiRecord
-    ? Merge<R, { out: Output<R['out']> }>
-    : never;
-type FlattenToUnion<T extends RawApiRecords, P extends string = ''> = {
-  [K in keyof T]: [Lowercase<`${P}/${string & K}`>, T[K]] extends [
-    infer K extends string,
-    infer V,
-  ]
-    ? V extends Partial<ApiRecord>
-      ? Record<K, MergeApiRecord<V>>
-      : V extends RawApiRecords
-        ? FlattenToUnion<V, K>
-        : Record<K, 'should be object'>
-    : never;
-}[keyof T];
-const toApi = (function () {
-  const keys = new Set(Object.keys(defaultApiRecord));
-  return <T extends RawApiRecords>(raw: T, root = '') => {
-    const records: LooseObject = {};
-    each(raw, (v, k) => {
-      const path = `${root}/${k}`.toLowerCase();
-      const isApiRecord = Object.keys(v).every((k) => keys.has(k));
-      if (isApiRecord) {
-        const record = Object.assign({}, defaultApiRecord, v);
-        records[path] = Object.assign(record, { out: output(record.out) });
-      } else {
-        Object.assign(records, toApi(v as RawApiRecords, path));
-      }
-    });
-    return records as UnionToIntersection<FlattenToUnion<T>>;
-  };
-})();
-const rawApiRecords = {
-  /**注册 */
-  signup: {
-    meta: { type: 'post', token: '' },
-    in: user.back
-      .pick({ phone: true, gender: true, birthday: true })
-      .extend({ code: param.code }),
-  },
-  /**注销 */
-  signoff: {},
-  'token/refresh': {
-    meta: { type: 'post', token: 'refresh' },
-    out: shared.token,
-  },
-  batch: {
-    in: z.tuple([z.string(), z.any()]).array().min(2),
-    out: output().array().min(2),
-  },
-  login: {
-    /**密码登录 */
-    pwd: {
-      meta: { type: 'post', token: '' },
-      in: z.object({ phone, pwd }),
-      out: user.front.own.merge(shared.token),
-    },
-    /**验证码登录 */
-    phone: {
-      meta: { type: 'post', token: '' },
-      in: z.object({ phone, code: param.code }),
-      out: user.front.own.merge(shared.token),
-    },
-    /**token 登录 */
-    token: {
-      out: user.front.own,
-    },
-  },
-  otp: {
-    phone: {
-      meta: { type: 'post', token: '' },
-      in: phone,
-    },
-    email: {
-      in: z.string().email(),
-    },
-  },
-  usr,
-  exp,
-  msg,
-  rpt,
-} satisfies RawApiRecords;
-export const apiRecords = toApi(rawApiRecords);
+// const sched = {
+//   /**公开项目日程 */
+//   'public': {
+//     in: param.eid.merge(param.rtype),
+//     out: experiment.front.public.schedule
+//       .omit({ eid: true, rtype: true })
+//       .array(),
+//   },
+//   'joined': {
+//     in: param.eid.merge(param.rtype),
+//     out: experiment.front.joined.schedule
+//       .omit({ eid: true, rtype: true })
+//       .array(),
+//   },
+//   'own': {
+//     in: param.eid.merge(param.rtype),
+//     out: experiment.front.own.schedule.omit({ eid: true, rtype: true }).array(),
+//   },
+//   'joined/all': {
+//     out: experiment.front.joined.schedule.array(),
+//   },
+//   'own/all': {
+//     out: experiment.front.own.schedule.array(),
+//   },
+// } satisfies RawApiRecords;
+export const apiRecords = (<T extends RawApiRecords>(raw: T) =>
+  mapValues(raw, (v, k) => {
+    const record = Object.assign({}, defaultApiRecord, v);
+    return Object.assign(record, { out: output(record.out) });
+  }) as {
+    [K in keyof T]: Merge<typeof defaultApiRecord, T[K]> extends infer R extends
+      ApiRecord
+      ? Merge<R, { out: Output<R['out']> }>
+      : never;
+  })({
+  ...account,
+  ...usr,
+  ...recruit,
+  ...exp,
+  ...msg,
+  ...rpt,
+});
 // console.log(apiRecords);
 
 export type ApiRecords = typeof apiRecords;

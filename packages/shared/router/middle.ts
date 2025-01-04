@@ -17,10 +17,12 @@ export const a_json = Object.assign(
   },
   {
     convert: (data: any) =>
-      JSON.stringify(data, function (key, value) {
-        if (typeof value === 'bigint') return value + 'n';
-        return value;
-      }),
+      data === void 0
+        ? ''
+        : JSON.stringify(data, function (key, value) {
+            if (typeof value === 'bigint') return value + 'n';
+            return value;
+          }),
   },
 );
 export const b_json = Object.assign(
@@ -92,23 +94,18 @@ export const a_batch = (opts: {
   };
 };
 export const b_batch = (opts: {
-  handle(newCtx: Router.Context): MaybePromise<void>;
-  onSuccess(ctx: Router.Context, output: Router.Context['output'][]): void;
+  handle(ctx: Router.Context): MaybePromise<void>;
 }) =>
   async function b_batch(ctx: Router.Context<'/batch'>, next) {
     if (ctx.path !== '/batch') return next();
     const output = await Promise.all(
       ctx.input.map(async ([path, input]) => {
-        const newCtx = new Proxy(
-          { path, input } as Router.Context,
-          //@ts-ignore
-          { get: (o, p) => o[p] ?? ctx[p] },
-        );
+        const newCtx = Object.assign(Object.create(ctx), { path, input });
         await opts.handle(newCtx);
         return newCtx.output;
       }),
     );
-    return opts.onSuccess(ctx, output);
+    ctx.output = { code: OutputCode.Success.value, msg: '', data: output };
   } as Middle<Router.Context>;
 
 export function zodCheck<
