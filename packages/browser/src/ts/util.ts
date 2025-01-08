@@ -1,4 +1,5 @@
 import { errorFactory, pick } from 'shared';
+import { defineComponent, type ComponentOptionsWithoutProps } from 'vue';
 
 export const error = errorFactory({
   console: true,
@@ -40,4 +41,22 @@ export function pickModel<
 >(props: T, key?: K) {
   const keys = getModelKeys(key);
   return pick(props, keys) as Pick<T, (typeof keys)[number]>;
+}
+export function definePageComponent(
+  fileUrl: string,
+  setup: () => () => JSX.Element | null,
+  options?: ComponentOptionsWithoutProps,
+) {
+  const pathMatchArr = fileUrl.match(/\/([a-z-]+)\/([a-z-]+).ts/);
+  //@ts-ignore
+  return defineComponent({
+    ...options,
+    setup,
+    name: (pathMatchArr
+      ? pathMatchArr[1] === 'index'
+        ? pathMatchArr[2]
+        : pathMatchArr[1]
+      : (console.warn("can't get filename", fileUrl), 'unknown')
+    ).toUpperCase(),
+  });
 }

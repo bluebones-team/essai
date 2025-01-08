@@ -1,15 +1,14 @@
-import { createClient, getApiURL } from 'shared/router';
+import { createClient } from 'shared/router';
 import { storage } from '~/ts/state';
 import { error } from './util';
+import { apiPrefix } from 'shared/router/config.json';
 
-const host = getApiURL(import.meta.env.DEV);
-const wsHost = getApiURL(import.meta.env.DEV, 'ws');
 //@ts-ignore
 export const c = createClient({
-  send(ctx) {
+  sender(ctx) {
     const { meta } = ctx.api;
     if (meta.type === 'ws') {
-      const ws = new WebSocket(`${wsHost}${ctx.path}`);
+      const ws = new WebSocket(apiPrefix + ctx.path);
       ws.addEventListener('open', (event) => {
         ws.send(ctx.input as string);
       });
@@ -20,7 +19,7 @@ export const c = createClient({
         ctx.onError(event);
       });
     } else {
-      fetch(`${host}${ctx.path}`, {
+      fetch(apiPrefix + ctx.path, {
         method: meta.type,
         headers: {
           Authorization: meta.token && storage.get(meta.token),

@@ -5,7 +5,7 @@ import { VIcon } from 'vuetify/components/VIcon';
 import { VImg } from 'vuetify/components/VImg';
 import { VProgressCircular } from 'vuetify/components/VProgressCircular';
 
-export const Pic = defineComponent(function (props: {
+export const Pic = defineComponent(function (p: {
   src: string;
   size?: number | string;
   rounded?: number | boolean | string;
@@ -14,9 +14,9 @@ export const Pic = defineComponent(function (props: {
   errorSrc?: string;
 }) {
   return () => (
-    <VAvatar {...{ size: props.size, rounded: props.rounded ?? 'circle' }}>
+    <VAvatar {...{ size: p.size, rounded: p.rounded ?? 'circle' }}>
       <VImg
-        {...{ src: props.src, lazySrc: props.loadingSrc }}
+        {...{ src: p.src, lazySrc: p.loadingSrc }}
         aspectRatio="1"
         cover
         v-slots={{
@@ -30,10 +30,10 @@ export const Pic = defineComponent(function (props: {
             </div>
           ),
           error: () =>
-            props.errorSrc ? (
-              <VImg src={props.errorSrc} lazySrc={props.loadingSrc} />
+            p.errorSrc ? (
+              <VImg src={p.errorSrc} lazySrc={p.loadingSrc} />
             ) : (
-              <VIcon color="error" icon={mdiAlertOutline} size={props.size} />
+              <VIcon color="error" icon={mdiAlertOutline} size={p.size} />
             ),
         }}
       />

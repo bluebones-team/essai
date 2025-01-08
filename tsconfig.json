@@ -5,6 +5,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
+    "resolveJsonModule": true,
     "allowJs": false,
 
     // Bundler mode

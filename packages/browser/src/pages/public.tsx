@@ -10,6 +10,7 @@ import { Table, type TableHeader } from '~/components/table';
 import { c } from '~/ts//client';
 import { useExperimentData } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
+import { definePageComponent } from '~/ts/util';
 
 const {
   exp,
@@ -118,31 +119,31 @@ export const route: LooseRouteRecord = {
     },
   },
 };
-export default defineComponent({
-  name: 'Public',
-  beforeRouteEnter(to, from, next) {
-    Promise.allSettled([fetchExpList(), fetchExpRange()]).finally(next);
+export default definePageComponent(
+  import.meta.url,
+  () => () => (
+    <VMain class="d-flex h-100">
+      <_Table />
+      <ExperimentDetail
+        experiment={exp.selected}
+        recuitment={void 0}
+        readonly
+        slots={{
+          append: () => [
+            <VBtn
+              text="报名"
+              prependIcon={mdiAccountPlusOutline}
+              variant="outlined"
+              onClick={join}
+            />,
+          ],
+        }}
+      />
+    </VMain>
+  ),
+  {
+    beforeRouteEnter(to, from, next) {
+      Promise.allSettled([fetchExpList(), fetchExpRange()]).finally(next);
+    },
   },
-  setup() {
-    return () => (
-      <VMain class="d-flex h-100">
-        <_Table />
-        <ExperimentDetail
-          experiment={exp.selected}
-          recuitment={void 0}
-          readonly
-          slots={{
-            append: () => [
-              <VBtn
-                text="报名"
-                prependIcon={mdiAccountPlusOutline}
-                variant="outlined"
-                onClick={join}
-              />,
-            ],
-          }}
-        />
-      </VMain>
-    );
-  },
-});
+);

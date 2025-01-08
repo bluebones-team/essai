@@ -13,7 +13,6 @@ declare module 'vue-router' {
       tip: string;
       icon: string;
       order?: number;
-      groupOrder?: number;
       hideOn?: 'pc' | 'mobile';
     };
     need?: Partial<{

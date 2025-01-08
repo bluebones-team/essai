@@ -7,6 +7,7 @@ import { multipleEntryFilePlugin } from 'vite-plugin-multiple-entries';
 import UnpluginInjectPreload from 'unplugin-inject-preload/vite';
 import viteCompression from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
+import data from 'shared/router/config.json' with { type: 'json' };
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => ({
@@ -26,8 +27,8 @@ export default defineConfig(({ command, mode }) => ({
         enabled: command === 'serve',
       },
       manifest: {
-        name: 'Essai',
-        short_name: 'Essai',
+        name: 'Recruit',
+        short_name: 'Recruit',
         description: '蓝骨头招募',
         theme_color: '#ffffff',
         icons: [
@@ -44,10 +45,10 @@ export default defineConfig(({ command, mode }) => ({
         ],
       },
     }),
-    visualizer({
-      open: true,
-      filename: 'dist/visualizer.html',
-    }),
+    // visualizer({
+    //   open: true,
+    //   filename: 'dist/visualizer.html',
+    // }),
     multipleEntryFilePlugin({
       chunkName: 'load',
       entryPath: command === 'serve' ? '/src/load.ts' : resolve('src/load.ts'),
@@ -115,5 +116,10 @@ export default defineConfig(({ command, mode }) => ({
       },
     },
   },
-  server: { host: '0.0.0.0' },
+  server: {
+    host: '0.0.0.0',
+    proxy: {
+      '/api': `http://localhost:${data.devPort}`,
+    },
+  },
 }));

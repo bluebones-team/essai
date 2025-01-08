@@ -1,6 +1,7 @@
 {
   "name": "browser",
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
@@ -27,7 +28,7 @@
     "npm-run-all2": "^6.2.2",
     "rollup-plugin-visualizer": "^5.12.0",
     "unplugin-inject-preload": "^2.0.5",
-    "vite": "^5.4.6",
+    "vite": "^5.4.14",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-multiple-entries": "^0.0.1",
     "vite-plugin-pwa": "^0.20.1"

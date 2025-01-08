@@ -5,9 +5,7 @@ type BooleanKey<T, K extends keyof T = keyof T> = K extends any
   : never;
 type MaybeGetter<T> = (() => T) | T;
 type MaybePromise<T> = T | Promise<T>;
-//@ts-ignore
-const unique: unique symbol = Symbol();
-type Unique = typeof unique;
+type Handler<T = unknown> = <U extends T>(e: U & T) => U;
 
 //#region string
 /**字符串分割 */
@@ -32,7 +30,7 @@ type Diff<T extends {}, U extends {}> = T extends U
   ? { [K in keyof (T & U) as Exclude<K, keyof (T | U)>]: (T & U)[K] }
   : never;
 type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends {} ? DeepPartial<T[K]> : T[K];
+  [K in keyof T]?: T[K] extends Primative | Function ? T[K] : DeepPartial<T[K]>;
 };
 type DeepOmit<T, U> = T extends U
   ? Omit<T, keyof U> & Record<keyof U, Omit<T[keyof U], keyof U[keyof U]>>
@@ -44,6 +42,17 @@ type PickByValue<T, U> = Pick<
   { [K in keyof T]: T[K] extends U ? K : never }[keyof T]
 >;
 type NonReadonly<T> = { -readonly [P in keyof T]: T[P] };
+type DeepNonReadonly<T> = {
+  -readonly [P in keyof T]: T[P] extends Primative | Function
+    ? T[P]
+    : DeepNonReadonly<T[P]>;
+};
+type FromEntries<T extends [keyof any, any][]> = T extends [
+  infer L extends [keyof any, any],
+  ...infer R extends [keyof any, any][],
+]
+  ? { [K in L[0]]: L[1] } & FromEntries<R>
+  : {};
 //#endregion object
 
 //#region function

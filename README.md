@@ -13,7 +13,7 @@ subgraph Client
     mergeRequest & callCodeCbs
     -->|path,rawInput,codeCbs| createResponseCbs
 end
-subgraph Server
+subgraph Router
     sendRequest
     ==>|path,filteredInput| checkInputByPath2
     ==>|path,safeInput| callMiddlesByPath
@@ -22,3 +22,16 @@ end
 ApiRecords -->|apiRecord| callMiddlesByPath & checkInputByPath2 & checkInputByPath & checkOutputByPath
 
 ```
+
+```mermaid
+graph LR
+
+```
+
+| route | in           | out   |
+| ----- | ------------ | ----- |
+| /c    | least        | void  |
+| /r    | id           | all   |
+| /r/ls | page、filter | all[] |
+| /u    | id、editable | void  |
+| /d    | id           | void  |

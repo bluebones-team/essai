@@ -1,41 +1,35 @@
-/**
- * a_* means send end
- * b_* means receive end
- */
-import { Client, Router, type ApiRecord } from '.';
-import { error, type Middle } from '..';
-import { OutputCode } from '../data';
+import type { z } from 'zod';
+import { Client, Server, type ApiRecord } from '.';
+import { type Middle } from '..';
+import { OutputCode, type Output } from '../data';
 
-export const a_json = Object.assign(
-  <K extends string>(opts: { key: K }) => {
-    return {
-      a_json: ((ctx, next) => {
-        ctx[opts.key] = a_json.convert(ctx[opts.key]);
-        return next();
-      }) as Middle<{ [P in K]: any }>,
-    }.a_json;
+export const json_encoder = Object.assign(
+  function <K extends string>(key: K): Middle<{ [P in K]: any }> {
+    return function json_encode(ctx, next) {
+      ctx[key] = json_encoder.convert(ctx[key]);
+      return next();
+    };
   },
   {
-    convert: (data: any) =>
-      data === void 0
+    convert(data: any) {
+      return data === void 0
         ? ''
         : JSON.stringify(data, function (key, value) {
             if (typeof value === 'bigint') return value + 'n';
             return value;
-          }),
+          });
+    },
   },
 );
-export const b_json = Object.assign(
-  <K extends string>(opts: { key: K }) => {
-    return {
-      b_json: ((ctx, next) => {
-        ctx[opts.key] = b_json.convert(ctx[opts.key]);
-        return next();
-      }) as Middle<{ [P in K]: any }>,
-    }.b_json;
+export const json_decoder = Object.assign(
+  function <K extends string>(key: K): Middle<{ [P in K]: any }> {
+    return function json_decode(ctx, next) {
+      ctx[key] = json_decoder.convert(ctx[key]);
+      return next();
+    };
   },
   {
-    convert: (data: string) => {
+    convert(data: string) {
       if (typeof data !== 'string') {
         // console.warn('b_json.convert: not string', data);
         return data;
@@ -52,18 +46,18 @@ export const b_json = Object.assign(
   },
 );
 
-export const a_batch = (opts: {
+export const batch_sender = function (opts: {
   ms: number;
+  ignore?(ctx: Client.Context): boolean;
   send(
     data: Pick<Client.Context<'/batch'>, 'path' | 'input' | 'codeCbs'> & {
       outMiddle: Middle<Client.Context>;
     },
   ): void;
-  ignore?(ctx: Client.Context): boolean;
-}): Middle<Client.Context> => {
+}): Middle<Client.Context> {
   const inQueue: Client.Context[] = [];
   const outQueue: Client.Context[] = [];
-  return function a_batch(ctx, next) {
+  return function batch_send(ctx, next) {
     if (ctx.path === '/batch' || opts.ignore?.(ctx)) return next();
     inQueue.push(ctx);
     if (outQueue.length || inQueue.length > 1) return;
@@ -93,39 +87,33 @@ export const a_batch = (opts: {
     }, opts.ms);
   };
 };
-export const b_batch = (opts: {
-  handle(ctx: Router.Context): MaybePromise<void>;
-}) =>
-  async function b_batch(ctx: Router.Context<'/batch'>, next) {
+export const batch_handler = function (opts: {
+  handle(ctx: Server.Context): MaybePromise<z.infer<Output>>;
+}) {
+  return async function batch_handle(ctx: Server.Context<'/batch'>, next) {
     if (ctx.path !== '/batch') return next();
     const output = await Promise.all(
-      ctx.input.map(async ([path, input]) => {
-        const newCtx = Object.assign(Object.create(ctx), { path, input });
-        await opts.handle(newCtx);
-        return newCtx.output;
-      }),
+      ctx.input.map(([path, input]) =>
+        opts.handle(Object.assign(Object.create(ctx), { path, input })),
+      ),
     );
-    ctx.output = { code: OutputCode.Success.value, msg: '', data: output };
-  } as Middle<Router.Context>;
+    ctx.send({ code: OutputCode.Success.value, msg: '', data: output });
+  } as Middle<Server.Context>;
+};
 
-export function zodCheck<
+export function zod_checker<
   K extends 'in' | 'out',
   T extends { api: ApiRecord } & { [P in `${K}put`]: unknown },
 >(opts: { type: K; onFail(ctx: T, reason: unknown): void }): Middle<T> {
-  return async function zodCheck(ctx, next) {
-    try {
-      const key = `${opts.type}put` as const;
-      const {
-        error: err,
-        success,
-        data,
-      } = await ctx.api[opts.type].spa(ctx[key]);
-      if (!success) return opts.onFail(ctx, err.format());
-      ctx[key] = data;
-    } catch (err) {
-      error('zodCheck', err);
-    } finally {
-      return next();
-    }
+  return async function zod_check(ctx, next) {
+    const key = `${opts.type}put` as const;
+    const {
+      error: err,
+      success,
+      data,
+    } = await ctx.api[opts.type].spa(ctx[key]);
+    if (!success) return opts.onFail(ctx, err.format());
+    ctx[key] = data;
+    return next();
   };
 }

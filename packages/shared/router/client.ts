@@ -1,54 +1,48 @@
-import { packageName, type Middle } from '..';
+import { type Middle } from '..';
 import { OutputCode, type ExtractOutput } from '../data';
 import {
   apiRecords,
   type ApiRecords,
-  type ApiRecordTypes,
   type In,
   type Out,
   type Path,
 } from './api';
-import { a_batch, a_json, b_json, zodCheck } from './middle';
+import {
+  batch_sender,
+  json_encoder,
+  json_decoder,
+  zod_checker,
+} from './middle';
 import { Client } from './rpc';
 
-export const devPort = 3000;
-export function getApiURL<T extends 'http' | 'ws' = 'http'>(
-  isDev: boolean,
-  protocol = 'http' as T,
-) {
-  return isDev
-    ? (`${protocol}://localhost:${devPort}` as const)
-    : (`${protocol}s://${packageName}.bluebones.fun/api` as const);
-}
-
-type CodeCbs<O extends { code: OutputCode }> = {
+type CodeCallbacks<O extends { code: OutputCode }> = {
   [K in O['code']]?: (res: ExtractOutput<O, K>) => void;
-};
+} & { _?: (res: O) => void };
 declare module './rpc' {
   namespace Client {
     interface Context<P> {
       api: ApiRecords[P];
       signal?: AbortSignal;
-      codeCbs: CodeCbs<Out[P]>;
+      codeCbs: CodeCallbacks<Out[P]>;
     }
   }
 }
 export function createClient(opts: {
-  send(ctx: Client.Context): void;
+  sender(ctx: Client.Context): void;
   error(msg: string, ...e: any): void;
   setToken(token: Shared['token']): void;
 }) {
   const client = new Client();
   client.in
     .use(
-      zodCheck({
+      zod_checker({
         type: 'in',
         onFail: (ctx, reason) =>
           opts.error(`${ctx.path} 请求数据校验失败`, reason),
       }),
     )
     .use(
-      a_batch({
+      batch_sender({
         ms: 2e2,
         send({ path, input, codeCbs, outMiddle }) {
           client.out.with(outMiddle);
@@ -58,12 +52,12 @@ export function createClient(opts: {
       }),
     )
     .mark('with')
-    .use(a_json({ key: 'input' }))
-    .use(opts.send);
+    .use(json_encoder('input'))
+    .use(opts.sender);
   client.out
-    .use(b_json({ key: 'output' }))
+    .use(json_decoder('output'))
     .use(
-      zodCheck({
+      zod_checker({
         type: 'out',
         onFail: (ctx, reason) =>
           opts.error(`${ctx.path} 响应数据校验失败`, reason),
@@ -71,12 +65,13 @@ export function createClient(opts: {
     )
     .mark('with')
     .use(function callCodeCbs(ctx, next) {
-      const cb = ctx.codeCbs[ctx.output.code];
-      if (!cb) return opts.error(OutputCode.NoUser.msg);
-      //@ts-ignore
-      cb(ctx.output);
+      const cb = ctx.codeCbs[ctx.output.code] ?? ctx.codeCbs._;
+      cb
+        ? //@ts-ignore
+          cb(ctx.output)
+        : opts.error(`no codeCbs: ${ctx.path}:${ctx.output.code}`);
     });
-  class ProxyClient<P extends Path> {
+  class ProxyClient<P extends keyof ApiRecords> {
     constructor(public path: P) {
       this.path = path;
     }
@@ -84,10 +79,11 @@ export function createClient(opts: {
       client.in.with(middle);
       return this;
     }
-    send(input: In[P], codeCbs: CodeCbs<Out[P]> = {}) {
+    send(input: In[P], codeCbs: CodeCallbacks<Out[P]> = {}) {
       const path = this.path;
       const api = apiRecords[path];
       if (!api) return opts.error(`invalid path: ${path}`);
+      //@ts-ignore
       const ctx: Client.LeastContext = {
         path,
         input,
@@ -99,12 +95,15 @@ export function createClient(opts: {
             new ProxyClient('/token/refresh').send(void 0, {
               [OutputCode.Success.value](res) {
                 opts.setToken(res.data);
-                opts.send(client.createContext(ctx));
+                opts.sender(client.createContext(ctx));
               },
               [OutputCode.Unauthorizen.value]() {
                 opts.error('请重新登录');
               },
             });
+          },
+          [OutputCode.ServerError.value]({ msg }) {
+            opts.error(msg);
           },
           ...codeCbs,
         },
@@ -115,7 +114,7 @@ export function createClient(opts: {
       return client.send(ctx);
     }
   }
-  return new Proxy({} as { [P in keyof ApiRecordTypes]: ProxyClient<P> }, {
+  return new Proxy({} as { [P in keyof ApiRecords]: ProxyClient<P> }, {
     get: (_, path: Path) => new ProxyClient(path),
   });
 }

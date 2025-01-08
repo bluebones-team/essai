@@ -1,6 +1,6 @@
 import { mdiArrowLeft, mdiBellOutline, mdiEmailMultipleOutline } from '@mdi/js';
-import { MessageType } from 'shared/data';
 import { groupBy, map } from 'shared';
+import { MessageType } from 'shared/data';
 import { computed, defineComponent, reactive, ref, watchEffect } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VAppBar, VAppBarNavIcon } from 'vuetify/components/VAppBar';
@@ -15,7 +15,8 @@ import { List } from '~/components/list';
 import { c } from '~/ts//client';
 import { dateFormat } from '~/ts/date';
 import { usePopup } from '~/ts/hook';
-import { messages, setting } from '~/ts/state';
+import { messages } from '~/ts/state';
+import { definePageComponent } from '~/ts/util';
 
 const totalEnum = -1;
 const state = reactive({
@@ -24,7 +25,7 @@ const state = reactive({
       ? "totalEnum can't be MessageType"
       : MessageType | typeof totalEnum
   >(totalEnum),
-  message: ref<Shared['message']>(),
+  message: ref<FTables['message']>(),
 });
 
 const _Nav = defineComponent(() => {
@@ -78,16 +79,17 @@ const _MsgList = defineComponent(() => {
   );
   const groups = computed(() => {
     const msgs = messages.value
-      .toSorted((a, b) => b.t - a.t)
+      .toSorted((a, b) => b.created_at - a.created_at)
       .map((e) => {
-        const [day, time] = dateFormat(e.t, 'YYYY/MM/DD hh:mm').split(' ');
+        const [day, time] = dateFormat(e.created_at, 'YYYY/MM/DD hh:mm').split(
+          ' ',
+        );
         return Object.assign(e, { day, time });
       });
     return map(
       groupBy(msgs, (item) => item.day),
-      (items, day) => [
-        { Comp: VListSubheader, show: { value: true }, props: { title: day } },
-        ...items.map((item) => ({
+      (items, day) => {
+        const dayMsgs = items.map((item) => ({
           Comp: Item,
           show: computed(
             () => state.type === totalEnum || state.type === item.type,
@@ -99,10 +101,18 @@ const _MsgList = defineComponent(() => {
             appendText: item.time,
             prependIcon: MessageType[item.type].icon,
             border: true,
-            variant: item.read ? 'plain' : 'tonal',
+            variant: item.has_read ? 'plain' : 'tonal',
           } satisfies Props<typeof Item>,
-        })),
-      ],
+        }));
+        return [
+          {
+            Comp: VListSubheader,
+            show: computed(() => dayMsgs.some((e) => e.show.value)),
+            props: { title: day },
+          },
+          ...dayMsgs,
+        ];
+      },
     ).flat();
   });
   return () => (
@@ -117,24 +127,17 @@ const _MsgList = defineComponent(() => {
 });
 const _Detail = defineComponent(() => {
   const { mobile } = useDisplay();
-  // 自动已读
-  let timer = null as null | number;
   watchEffect(() => {
     const msg = state.message;
-    if (!msg) return;
-    if (typeof timer === 'number') window.clearTimeout(timer);
-    timer = window.setTimeout(() => {
-      if (mobile.value && !detail_dialog.isShow.value) return;
-      c['/msg/read'].send(
-        { uid: msg.uid, mid: msg.mid },
-        {
-          0() {
-            msg.read = true;
-            timer = null;
-          },
+    if (!msg || msg.has_read) return;
+    c['/msg/read'].send(
+      { mid: msg.mid },
+      {
+        0() {
+          msg.has_read = true;
         },
-      );
-    }, setting.notify.readDelay * 1e3);
+      },
+    );
   });
   return () =>
     state.message ? (
@@ -167,18 +170,15 @@ export const route: LooseRouteRecord = {
     need: { login: true },
   },
 };
-export default defineComponent(
-  function () {
-    const { mobile } = useDisplay();
-    return () => (
-      <div class="v-main">
-        <_Nav />
-        <VMain class="h-100 d-grid grid-col-auto">
-          <_MsgList />
-          {mobile.value ? <detail_dialog.Comp /> : <_Detail />}
-        </VMain>
-      </div>
-    );
-  },
-  { name: 'Message' },
-);
+export default definePageComponent(import.meta.url, () => {
+  const { mobile } = useDisplay();
+  return () => (
+    <div class="v-main">
+      <_Nav />
+      <VMain class="h-100 d-grid grid-col-auto">
+        <_MsgList />
+        {mobile.value ? <detail_dialog.Comp /> : <_Detail />}
+      </VMain>
+    </div>
+  );
+});

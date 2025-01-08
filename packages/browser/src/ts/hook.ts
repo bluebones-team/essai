@@ -1,4 +1,4 @@
-import { deepClone, deepIsEqual, mapValues } from 'shared';
+import { deepClone, deepIsEqual } from 'shared';
 import {
   ExperimentState,
   RecruitmentType,
@@ -189,7 +189,7 @@ export function useExperiment<T extends ExperimentFrontDataType>(type: T) {
       rtype: RecruitmentType.Subject.value,
     },
   ) {
-    return c[`/exp/${type}/list`].with(progress(showProgressbar, 'value')).send(
+    return c[`/exp/${type}/ls`].with(progress(showProgressbar, 'value')).send(
       { ...state.page, filter: filterData },
       {
         //@ts-ignore
@@ -230,9 +230,8 @@ export function useExperimentFilter<T extends ExperimentFrontDataType>(
       .with(progress(showProgressbar, 'value'))
       .send(void 0, {
         0(res) {
-          //@ts-ignore
-          state.range = mapValues(res.data, (v) => v.toSorted((a, b) => a - b));
-          Object.assign(state.data, state.range);
+          state.range = res.data;
+          Object.assign(state.data, deepClone(res.data));
         },
       });
   }
@@ -241,6 +240,21 @@ export function useExperimentFilter<T extends ExperimentFrontDataType>(
     fetchRange,
   };
 }
+export function useRecruitment() {
+  c['/recruit/ls'].send(
+    {
+      eid: '',
+      pn: 1,
+      ps: 1,
+    },
+    {
+      0(res) {
+        console.log(res.data);
+      },
+    },
+  );
+}
+export function useRecruitmentCondition() {}
 export function useRecruitmentParticipant(
   exp: Ref<FTables['experiment'][ExperimentFrontDataType]['data'] | undefined>,
 ) {
@@ -256,11 +270,12 @@ export function useRecruitmentParticipant(
   function fetchList() {
     if (!exp.value)
       return snackbar.show({ text: '请选择项目', color: 'error' });
-    return c['/recruit/ptc/list'].with(progress(showProgressbar, 'value')).send(
+    if (!state.selected)
+      return snackbar.show({ text: '请选择招募条件', color: 'error' });
+    return c['/recruit/ptc/ls'].with(progress(showProgressbar, 'value')).send(
       {
         ...state.page,
-        rtype: state.rtype,
-        eid: exp.value.eid,
+        rcid: state.selected.rcid,
       },
       {
         0(res) {
@@ -296,7 +311,7 @@ export function useUserParticipant() {
     page: { ps: 20, pn: 1 },
   });
   function fetchList() {
-    return c['/usr/ptc/list'].with(progress(showProgressbar, 'value')).send(
+    return c['/usr/ptc/ls'].with(progress(showProgressbar, 'value')).send(
       { ...state.page, filter: { rtype: state.rtype } },
       {
         0(res) {

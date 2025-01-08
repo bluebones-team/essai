@@ -21,11 +21,12 @@ export const Field = defineComponent(function <T extends z.ZodTypeAny>(p: {
   slots?: Record<string, () => VNodeChild>;
 }) {
   const { schema } = p;
+  const { metadata: _meta } = schema;
   const sharedProps = computed(() => ({
     modelValue: p.modelValue,
     'onUpdate:modelValue': p['onUpdate:modelValue'],
-    label: p.label ?? schema._meta?.text,
-    hint: p.hint ?? schema._meta?.desc,
+    label: p.label ?? _meta?.text,
+    hint: p.hint ?? _meta?.desc,
     rules: p.rules ?? [
       async function (v: unknown) {
         const { success, error: err } = await schema.spa(v ?? void 0);
@@ -34,17 +35,17 @@ export const Field = defineComponent(function <T extends z.ZodTypeAny>(p: {
     ],
   }));
 
-  if (schema._meta?.type === 'textarea')
+  if (_meta?.type === 'textarea')
     return () => <VTextarea {...sharedProps.value} v-slots={p.slots} />;
-  if (schema._meta?.type === 'date')
+  if (_meta?.type === 'date')
     return () => <DateInput {...sharedProps.value} v-slots={p.slots} />;
-  if (schema._meta?.type === 'range')
+  if (_meta?.type === 'range')
     return () => <RangeSlider {...sharedProps.value} v-slots={p.slots} />;
-  if (schema._meta?.items)
+  if (_meta?.items)
     return () => (
       <VSelect
         {...sharedProps.value}
-        items={schema._meta?.items?.map((e) => ({
+        items={_meta?.items?.map((e) => ({
           title: e.text,
           subtitle: e.name,
           value: e.value,

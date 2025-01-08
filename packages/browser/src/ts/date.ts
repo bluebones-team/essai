@@ -1,5 +1,5 @@
 import { each } from 'shared';
-import { ts_date } from 'shared/data';
+import { ts2date } from 'shared/data';
 
 const parse = (date: Date) => ({
   Y: date.getFullYear() + '',
@@ -15,7 +15,7 @@ export function dateFormat(
   format = 'YYYY/MM/DD',
 ) {
   if (typeof date === 'number') {
-    date = ts_date(date);
+    date = ts2date(date);
   }
   const { Y, M, D, h, m, s } = parse(date);
   const formatMap = {

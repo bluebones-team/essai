@@ -114,8 +114,7 @@ export const Recruitment = defineComponent(function (p: {
       layout={(comps) => [
         [{ comp: comps.rtype }, { comp: comps.fee }],
         [{ comp: comps.notice }],
-        // [{ comp: comps.durations }],
-        // [{ comp: comps.conditions }],
+        [{ comp: comps.durations }],
       ]}
     />
   );
@@ -146,12 +145,10 @@ export const ExperimentDetail = defineComponent(function (p: {
   const Detail = () => (
     <div class="flex-grow-1">
       <VToolbar
-        title="实验详情"
+        title="实验详情页"
         v-slots={{
           prepend: () =>
-            mobile.value ? (
-              <VBtn icon={mdiArrowLeft} onClick={dialog.close} />
-            ) : null,
+            mobile.value && <VBtn icon={mdiArrowLeft} onClick={dialog.close} />,
           ...p.slots,
         }}
       />

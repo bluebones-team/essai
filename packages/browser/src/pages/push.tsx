@@ -1,6 +1,6 @@
 import { mdiArrowLeft, mdiDeleteOutline, mdiSendOutline } from '@mdi/js';
 import {
-  birth_age,
+  birth2age,
   ExperimentState,
   ExperimentType,
   Gender,
@@ -20,6 +20,7 @@ import { Table } from '~/components/table';
 import { c } from '~/ts/client';
 import { useExperiment, usePopup, useUserParticipant } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
+import { definePageComponent } from '~/ts/util';
 
 const { state: exp, fetchList: fetchExpList } = useExperiment('own');
 const { state: ptc, fetchList: fetchPtcList } = useUserParticipant();
@@ -68,7 +69,7 @@ const _LibTable = defineComponent(() => {
         {
           title: '年龄',
           key: 'birthday',
-          value: (item) => birth_age(item.birthday),
+          value: (item) => birth2age(item.birthday),
         },
         {
           title: '操作',
@@ -82,7 +83,7 @@ const _LibTable = defineComponent(() => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                c['/usr/ptc/remove'].send(
+                c['/usr/ptc/d'].send(
                   { rtype: ptc.rtype, uid: item.uid },
                   {
                     0(res) {
@@ -173,18 +174,9 @@ export const route: LooseRouteRecord = {
     },
   },
 };
-export default defineComponent({
-  name: 'Push',
-  beforeRouteEnter(to, from, next) {
-    Promise.allSettled([
-      fetchExpList({
-        state: ExperimentState.Passed.value,
-        rtype: RecruitmentType.Subject.value,
-      }),
-      fetchPtcList(),
-    ]).finally(next);
-  },
-  setup() {
+export default definePageComponent(
+  import.meta.url,
+  () => {
     const { mobile } = useDisplay();
     return () => (
       <VMain class="h-100 d-grid grid-col-auto">
@@ -193,4 +185,15 @@ export default defineComponent({
       </VMain>
     );
   },
-});
+  {
+    beforeRouteEnter(to, from, next) {
+      Promise.allSettled([
+        fetchExpList({
+          state: ExperimentState.Passed.value,
+          rtype: RecruitmentType.Subject.value,
+        }),
+        fetchPtcList(),
+      ]).finally(next);
+    },
+  },
+);

@@ -1,5 +1,5 @@
 import { mdiEyeOffOutline, mdiEyeOutline } from '@mdi/js';
-import { date_ts, Gender, OutputCode } from 'shared/data';
+import { date2ts, Gender, OutputCode } from 'shared/data';
 import { apiRecords, progress } from 'shared/router';
 import { defineComponent, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -12,6 +12,7 @@ import { OtpInput } from '~/components/otp-input';
 import { c } from '~/ts/client';
 import { usePopup } from '~/ts/hook';
 import { snackbar, storage, udata } from '~/ts/state';
+import { definePageComponent } from '~/ts/util';
 
 const PwdLogin = defineComponent(() => {
   const loading = ref(false);
@@ -65,14 +66,14 @@ const PhoneLogin = defineComponent(() => {
     phone: '',
     code: '',
     gender: Gender.Female.value,
-    birthday: date_ts(Date.now()),
+    birthday: date2ts(Date.now()),
   });
   const signup_dialog = usePopup(Dialog, () => ({
     content: () => (
       <Form
         v-model={isValid.value}
         model={signupData}
-        schema={apiRecords['/signup'].in}
+        schema={apiRecords['/usr/c'].in}
         layout={(comps) => [
           [{ comp: comps.gender, cols: 12 }, { comp: comps.birthday }],
         ]}
@@ -84,7 +85,7 @@ const PhoneLogin = defineComponent(() => {
         variant: 'flat' as const,
         blick: true,
         onClick: () => {
-          c['/signup'].send(signupData, {
+          c['/usr/c'].send(signupData, {
             0(res) {
               snackbar.show({ text: '注册成功', color: 'success' });
               signup_dialog.close();
@@ -121,13 +122,9 @@ const comps = [
   { text: '短信', comp: PhoneLogin },
 ];
 export const route: LooseRouteRecord = {};
-export default defineComponent({
-  name: 'Login',
-  // beforeRouteEnter(to, from) {
-  //   const { redirect } = to.query;
-  //   return !udata.value || (typeof redirect === 'string' ? redirect : '/');
-  // },
-  setup() {
+export default definePageComponent(
+  import.meta.url,
+  () => {
     const router = useRouter();
     watch(udata, (v) => {
       const { redirect } = router.currentRoute.value.query;
@@ -149,4 +146,10 @@ export default defineComponent({
       </VMain>
     );
   },
-});
+  {
+    // beforeRouteEnter(to, from) {
+    //   const { redirect } = to.query;
+    //   return !udata.value || (typeof redirect === 'string' ? redirect : '/');
+    // },
+  },
+);

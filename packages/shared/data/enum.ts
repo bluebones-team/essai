@@ -1,17 +1,18 @@
 import {
-  mdiAccountCheckOutline,
   mdiAccountPlusOutline,
-  mdiAlarm,
   mdiBullhornVariantOutline,
-  mdiCalendarClock,
   mdiFilePlusOutline,
   mdiFileRemoveOutline,
   mdiFileSendOutline,
   mdiGenderFemale,
   mdiGenderMale,
   mdiLockOutline,
+  mdiThemeLightDark,
+  mdiWeatherNight,
+  mdiWeatherSunny,
 } from '@mdi/js';
 
+const unique = Symbol();
 type ItemData = Partial<ItemMeta<typeof unique, typeof unique>> &
   Record<string, unknown>;
 type ItemKD<K extends string = string, D extends ItemData = ItemData> = [K, D];
@@ -59,7 +60,8 @@ export const OutputCode = toEnum([
   ['Success', { msg: 'ok' }],
   ['Fail', { msg: 'fail' }],
   ['Unauthorizen', { msg: 'token invalid' }],
-  ['NoUser', { msg: '用户不存在' }],
+  ['NoUser', { msg: 'user not found' }],
+  ['ServerError', { msg: 'server error' }],
 ]);
 export type OutputCode = Enum<typeof OutputCode>;
 /**招募类型 */
@@ -125,7 +127,7 @@ export type ExperimentState = Enum<typeof ExperimentState>;
 /**报名状态 */
 export const JoinState = toEnum([
   ['Approved', { text: '已采纳', color: 'success' }],
-  ['Rejected', { text: '未采纳', color: 'default' }],
+  ['Pending', { text: '待采纳', color: 'default' }],
 ]);
 export type JoinState = Enum<typeof JoinState>;
 /**用户性别 */
@@ -141,50 +143,39 @@ export const CardType = toEnum([
   ['Other', { text: '其他', color: 'gray' }],
 ]);
 export type CardType = Enum<typeof CardType>;
-/**实验举报类型 */
-export const ReportProjectType = toEnum([
-  ['Fee', { text: '报酬', color: 'green' }],
-  ['AD', { text: '广告信息', color: 'red' }],
-  ['Other', { text: '其他', color: 'gray' }],
+export const ReportType = toEnum([
+  ['Experiment.Fee', { text: '报酬过低或过高' }],
+  ['Experiment.AD', { text: '存在广告信息' }],
+  ['Experiment.Other', { text: '其他' }],
+  ['User.Other', { text: '其他' }],
 ]);
-export type ReportProjectType = Enum<typeof ReportProjectType>;
-/**用户举报类型 */
-export const ReportUserType = toEnum([
-  ['NoContact', { text: '无法联系', color: 'green' }],
-  ['NoJoin', { text: '未按时参加', color: 'red' }],
-  ['Other', { text: '其他', color: 'gray' }],
-]);
-export type ReportUserType = Enum<typeof ReportUserType>;
+export type ReportType = Enum<typeof ReportType>;
 /**消息类型 */
 export const MessageType = toEnum([
   [
-    'System',
+    'Sys.Announcement',
     { text: '系统公告', icon: mdiBullhornVariantOutline, group: '系统' },
   ],
-  ['Security', { text: '账号安全', icon: mdiLockOutline, group: '系统' }],
+  ['Sys.Security', { text: '账号安全', icon: mdiLockOutline, group: '系统' }],
   [
-    'PushProject',
+    'Participant.Push',
     { text: '实验推送', icon: mdiFileSendOutline, group: '参与者' },
   ],
   [
-    'JoinResult',
+    'Participant.JoinResult',
     { text: '报名结果', icon: mdiAccountPlusOutline, group: '参与者' },
   ],
+  // [
+  //   'EventChanged',
+  //   { text: '日程变动', icon: mdiCalendarClock, group: '参与者' },
+  // ],
+  // ['EventNotice', { text: '日程提醒', icon: mdiAlarm, group: '参与者' }],
   [
-    'EventChanged',
-    { text: '日程变动', icon: mdiCalendarClock, group: '参与者' },
-  ],
-  ['EventNotice', { text: '日程提醒', icon: mdiAlarm, group: '参与者' }],
-  [
-    'ReviewResult',
+    'Recruiter.ReviewResult',
     { text: '审核结果', icon: mdiFilePlusOutline, group: '招募者' },
   ],
   [
-    'ApproveJoin',
-    { text: '批准报名', icon: mdiAccountCheckOutline, group: '招募者' },
-  ],
-  [
-    'ProjectFinish',
+    'Recruiter.Finish',
     { text: '实验结束', icon: mdiFileRemoveOutline, group: '招募者' },
   ],
 ]);
@@ -201,36 +192,15 @@ export const FeedbackType = toEnum([
   [
     'Bug',
     {
-      text: 'Bug',
-      display: [
-        {
-          label: 'Bug描述',
-          rows: 3,
-        },
-        {
-          label: '如何触发这个Bug？',
-          hint: '我们将根据这些步骤重现Bug',
-          rows: 3,
-        },
-      ],
+      text: '使用问题',
+      desc: '尽可能详细描述您遇到的问题，以便我们更快地定位并解决',
     },
   ],
   [
     'Feature',
     {
-      text: '功能提议',
-      display: [
-        {
-          label: '您遇到了什么问题？',
-          hint: '我们需要明确这个需求',
-          rows: 3,
-        },
-        {
-          label: '您觉得应该如何解决？',
-          hint: '我们将优先考虑您的建议',
-          rows: 3,
-        },
-      ],
+      text: '功能建议',
+      desc: '尽可能详细描述您希望实现的新功能，以便我们更快地评估和实现',
     },
   ],
 ]);
@@ -247,14 +217,14 @@ export type UserStatus = Enum<typeof UserStatus>;
 // frontend
 /**用户角色 */
 export const Role = toEnum([
-  ['Participant', { text: '参与者', color: 'green' }],
-  ['Recruiter', { text: '招募者', color: 'red' }],
+  ['Participant', { text: '参与者' }],
+  ['Recruiter', { text: '招募者' }],
 ]);
 export type Role = Enum<typeof Role>;
 /**页面主题 */
 export const Theme = toEnum([
-  ['System', { text: '跟随系统', color: 'green' }],
-  ['Light', { text: '浅色', color: 'red' }],
-  ['Dark', { text: '深色', color: 'gray' }],
+  ['System', { text: '跟随系统', icon: mdiThemeLightDark }],
+  ['Light', { text: '浅色', icon: mdiWeatherSunny }],
+  ['Dark', { text: '深色', icon: mdiWeatherNight }],
 ]);
 export type Theme = Enum<typeof Theme>;

@@ -1,72 +1,39 @@
-import type { IncomingMessage, ServerResponse } from 'http';
 import pino from 'pino';
 import type { PrettyOptions } from 'pino-pretty';
-import { each, env } from 'shared';
+import { env, pick } from 'shared';
 import { OutputCode, type ExtractOutput, type Output } from 'shared/data';
-import WebSocket from 'ws';
 import type { z } from 'zod';
 
-/**create success output */
-export function o<T extends any = undefined>(
-  type: 'succ',
-  data?: T,
-): ExtractOutput<z.infer<Output<T>>, 0>;
-/**create failure output */
-export function o(type: 'fail', msg: string): ExtractOutput<z.infer<Output>, 1>;
-/**create output by code */
-export function o<T extends OutputCode>(
-  code: T,
-): ExtractOutput<z.infer<Output>, T>;
-/**check output's type */
-export function o<T extends z.infer<Output>>(data: T): T;
-export function o(...[p0, p1]: any[]) {
-  if (typeof p0 === 'object') return p0;
-  //@ts-ignore
-  if (typeof p0 === 'number') return { code: p0, msg: OutputCode[p0].msg };
-  if (p0 === 'succ')
-    return { code: OutputCode.Success.value, msg: '', data: p1 };
-  if (p0 === 'fail') return { code: OutputCode.Fail.value, msg: p1 };
-  throw new Error('Invalid output arguments');
-}
-
-export const createContext = {
-  base(req: IncomingMessage): BaseContext {
-    return {
-      req,
-      path: req.url ?? 'no path',
-      input: null,
-      output: null,
-    };
+/**响应数据构造器 */
+export const o = Object.assign(
+  ((e: unknown) =>
+    //@ts-ignore
+    typeof e === 'number' ? { code: e, msg: OutputCode[e].msg } : e) as {
+    <T extends z.infer<Output>>(data: T): T;
+    <T extends OutputCode>(code: T): ExtractOutput<z.infer<Output>, T>;
   },
-  http: (function () {
-    const base: Pick<HttpContext, 'set' | 'send'> = {
-      set(headers) {
-        each(headers, (v, k) => v !== void 0 && this.res.setHeader(k, v));
-      },
-      send(code, data) {
-        this.res.statusCode = code;
-        this.res.end(data);
-      },
-    };
-    return async (req: IncomingMessage, res: ServerResponse) =>
-      Object.assign(createContext.base(req), base, {
-        res,
-        input: await new Promise<string>((resolve) => {
-          let data = '';
-          req
-            .on('data', (chunk) => (data += chunk))
-            .on('end', () => resolve(data));
-        }),
-      }) satisfies HttpContext;
-  })(),
-  ws: (ws: WebSocket, req: IncomingMessage, data: WebSocket.RawData) =>
-    Object.assign(createContext.base(req), {
-      ws,
-      input: data.toString(),
-    }) satisfies WsContext,
-};
-export const isWsContext = (ctx: BaseContext): ctx is WsContext => 'ws' in ctx;
-
+  {
+    //@ts-ignore
+    is: <T>(data: T): data is z.infer<Output> =>
+      Object.prototype.hasOwnProperty.call(data, 'code') &&
+      Object.prototype.hasOwnProperty.call(data, 'msg'),
+    succ: <T extends any = undefined>(data?: T) => ({
+      code: OutputCode.Success.value,
+      msg: '',
+      data: data as T,
+    }),
+    fail: (msg: string) => ({ code: OutputCode.Fail.value, msg }),
+    error: (reason: string, obj: unknown) => {
+      console.error(reason, obj);
+      obj =
+        obj instanceof Error
+          ? pick(obj, ['name', 'message', 'stack', 'cause'])
+          : obj;
+      log.error({ obj, reason }, reason);
+      return o(OutputCode.ServerError.value);
+    },
+  },
+);
 export const log = pino({
   level: env('NODE_ENV') === 'development' ? 'debug' : 'info',
   transport: {
@@ -77,7 +44,7 @@ export const log = pino({
         /**@see https://github.com/pinojs/pino-pretty */
         options: {
           translateTime: 'SYS:standard',
-          messageFormat: ['{req.method} {req.url}', '{msg}'].join(' - '),
+          messageFormat: '{msg} - {req.method} {req.url} {res.output.msg}',
           // singleLine: true,
           hideObject: true,
         } satisfies PrettyOptions,

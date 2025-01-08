@@ -5,25 +5,27 @@
     "dev": "bun --hot src/app.ts",
     "build": "bun scripts/build.js",
     "start": "bun dist/app.js",
-    "type-check": "tsc --noEmit --noUnusedLocals false"
+    "type-check": "tsc --noEmit --noUnusedLocals false",
+    "mock": "bun scripts/db.ts mock && bun dev",
+    "reset": "bun scripts/db.ts reset && bun mock"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.6",
-    "@types/koa-pino-logger": "^3.0.4",
     "@types/pg": "^8.11.10",
     "bun-plugin-pino": "^1.1.0",
     "globals": "^15.9.0",
-    "pino-pretty": "^11.2.2"
+    "pino-pretty": "^11.2.2",
+    "zocker": "^1.4.1"
   },
   "dependencies": {
     "@alicloud/dysmsapi20170525": "2.0.24",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "kysely": "^0.27.5",
     "pg": "^8.13.1",
     "pino": "^9.6.0",
     "redis": "^4.7.0",
     "shared": "workspace:*",
-    "ws": "^8.18.0",
-    "zocker": "^1.4.1"
+    "ws": "^8.18.0"
   }
 }

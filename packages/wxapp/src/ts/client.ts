@@ -1,17 +1,16 @@
 import { each } from 'shared';
-import { createClient, getApiURL } from 'shared/router';
+import { createClient } from 'shared/router';
+import { apiPrefix } from 'shared/router/config.json';
 
 const accountInfo = wx.getAccountInfoSync();
 const envVersion = accountInfo.miniProgram.envVersion;
 
-const host = getApiURL(envVersion === 'develop');
-const wsHost = getApiURL(envVersion === 'develop', 'ws');
 export const c = createClient({
-  send(ctx) {
+  sender(ctx) {
     const meta = ctx.api.meta;
     const { type } = meta;
     if (type === 'ws') return;
-    fetch(`${host}/${ctx.path}`, {
+    fetch(apiPrefix + ctx.path, {
       method: type,
       headers: {
         Authorization: meta.token && wx.getStorageSync(meta.token),

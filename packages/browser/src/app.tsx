@@ -42,7 +42,7 @@ const NavTab = defineComponent(
     path?: string;
     tip: string;
     icon?: string;
-    badge?: number;
+    badge?: boolean;
     slot?: Component;
     style?: string;
   }) => {
@@ -59,7 +59,7 @@ const NavTab = defineComponent(
           {p.slot ? (
             h(p.slot)
           ) : p.badge ? (
-            <VBadge content={p.badge} color="error">
+            <VBadge dot={p.badge} color="error">
               <VIcon icon={p.icon} />
             </VBadge>
           ) : (
@@ -93,8 +93,8 @@ function useNavTabs() {
         path,
         badge:
           meta.nav.tip === '消息'
-            ? messages.value.filter((e) => !e.read).length
-            : 0,
+            ? messages.value.some((e) => !e.has_read)
+            : false,
         ...meta.nav,
       })),
     ),

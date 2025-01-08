@@ -65,11 +65,11 @@ export function pick<T extends LooseObject, K extends keyof T>(
 ) {
   if (!isObject(obj)) return error('pick only supports objects');
   const result: Partial<T> = {};
-  keys.forEach((key) => {
+  for (let key of keys) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       result[key] = obj[key];
     }
-  });
+  }
   return result as Pick<T, K>;
 }
 /**@example omit({a: 1, b: 2, c: 3}, ['a', 'c']) // {b: 2} */
@@ -79,11 +79,11 @@ export function omit<T extends LooseObject, K extends keyof T>(
 ) {
   if (!isObject(obj)) return error('omit only supports objects');
   const result: Partial<T> = { ...obj };
-  keys.forEach((key) => {
+  for (let key of keys) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       delete result[key];
     }
-  });
+  }
   return result as Omit<T, K>;
 }
 /**@example isEqualDeep({a: {b: 1}}, {a: {b: 1}}) // true */
@@ -186,12 +186,22 @@ export type Middle<T extends {}> = (
   ctx: T,
   next: () => MaybePromise<any>,
 ) => MaybePromise<any>;
-export type ComposedMiddle<T extends {}> = (
+export type ComposedMiddle<T extends {}, K extends string = string> = (
   ctx: T,
   next?: () => MaybePromise<any>,
-  start?: string | number,
+  start?: K | number,
 ) => MaybePromise<any>;
 export class Onion<T extends {}, K extends string = string> {
+  static readonly errMgr = {
+    symbol: Symbol('middle-error'),
+    is(err: unknown) {
+      return Object.prototype.hasOwnProperty.call(err, this.symbol);
+    },
+    create(err: unknown) {
+      //@ts-ignore
+      return Object.assign(err, { [this.symbol]: true });
+    },
+  };
   middles;
   readonly markers: { [P in K]?: number } = {};
   constructor(middles: Middle<T>[] = []) {
@@ -203,30 +213,30 @@ export class Onion<T extends {}, K extends string = string> {
     return this;
   }
   /**add marker for onion */
-  mark(name: K) {
-    this.markers[name] = this.middles.length;
+  mark(id: K) {
+    this.markers[id] = this.middles.length;
     return this;
   }
-  getIndex(id: K | string) {
-    const index =
-      this.markers[id as K] ?? this.middles.findIndex((e) => e.name === id);
-    if (index === -1) error(`Middle not found: ${id}`);
+  findMark(id: K) {
+    const index = this.markers[id];
+    if (index === void 0 || index === -1)
+      return error(`Middle not found: ${id}`);
     return index;
   }
   /**@see https://github.com/koajs/compose/blob/master/index.js */
-  compose(): ComposedMiddle<T> {
-    return (ctx, next, start = 0) => {
+  compose(): ComposedMiddle<T, K> {
+    return (ctx, next, start: K | number = 0) => {
       const dispatch = async (index: number) => {
         if (index === this.middles.length) return next?.();
         const middle = this.middles[index];
         try {
-          // console.log(`dispatch middle: ${middle.name}`);
           return await middle(ctx, () => dispatch(index + 1));
         } catch (err) {
-          console.error(`middle error: ${middle.name}`, err);
+          Onion.errMgr.is(err) || console.error(`middle error: ${middle.name}`);
+          return Promise.reject(Onion.errMgr.create(err));
         }
       };
-      return dispatch(typeof start === 'number' ? start : this.getIndex(start));
+      return dispatch(typeof start === 'number' ? start : this.findMark(start));
     };
   }
 }

@@ -9,6 +9,7 @@ import { VMain } from 'vuetify/components/VMain';
 import { ExperimentDetail } from '~/components/experiment';
 import { Table } from '~/components/table';
 import { useExperimentData } from '~/ts/hook';
+import { definePageComponent } from '~/ts/util';
 
 const {
   exp,
@@ -73,21 +74,21 @@ export const route: LooseRouteRecord = {
     },
   },
 };
-export default defineComponent({
-  name: 'Joined',
-  beforeRouteEnter(to, from, next) {
-    fetchExpList().finally(next);
+export default definePageComponent(
+  import.meta.url,
+  () => () => (
+    <VMain class="h-100 d-flex">
+      <_Table />
+      <ExperimentDetail
+        experiment={exp.selected}
+        recuitment={void 0}
+        readonly
+      />
+    </VMain>
+  ),
+  {
+    beforeRouteEnter(to, from, next) {
+      fetchExpList().finally(next);
+    },
   },
-  setup() {
-    return () => (
-      <VMain class="h-100 d-flex">
-        <_Table />
-        <ExperimentDetail
-          experiment={exp.selected}
-          recuitment={void 0}
-          readonly
-        />
-      </VMain>
-    );
-  },
-});
+);

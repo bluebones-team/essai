@@ -19,28 +19,23 @@ export const setting = reactive({
     /**角色 */
     role: Role.Participant.value as Role,
   },
-  /**消息通知 */
-  notify: {
-    /**消息已读定时 */
-    readDelay: 2,
-  },
-  /**日程表 */
-  calendar: {
-    timeline: [8, 22] as [number, number],
-  },
-  /**隐私 */
-  privacy: {
-    /**允许被添加至参与者库 */
-    allowAddToLib: true,
-  },
+  // /**消息通知 */
+  // notify: {
+  //   /**消息已读定时 */
+  //   readDelay: 2,
+  // },
+  // /**日程表 */
+  // calendar: {
+  //   timeline: [8, 22] as [number, number],
+  // },
   /**权限 */
   permission: {
-    geolocation: true,
-    notification: true,
+    geolocation: false,
+    notification: false,
   },
 });
 /**消息 */
-export const messages = ref<Shared['message'][]>([]);
+export const messages = ref<FTables['message'][]>([]);
 
 // 初始化
 setTimeout(() => {
@@ -49,7 +44,7 @@ setTimeout(() => {
       udata.value = res.data;
     },
   });
-  c['/msg/list'].send(
+  c['/msg/ls'].send(
     { pn: 1, ps: 20 },
     {
       0(res) {
@@ -105,4 +100,6 @@ export const injection = {
   editable: Symbol('editable') as InjectionKey<MaybeGetter<boolean>>,
 };
 
-Object.assign(window, { app: reactive({ setting, snackbar, messages }) });
+Object.assign(window, {
+  app: reactive({ setting, snackbar, messages, udata }),
+});

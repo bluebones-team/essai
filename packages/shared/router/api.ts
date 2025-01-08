@@ -2,9 +2,12 @@ import { z } from 'zod';
 import { mapValues } from '..';
 import {
   experiment,
+  message,
   output,
   param,
+  posInt,
   recruitment,
+  recruitment_condition,
   recruitment_participant,
   report,
   shared,
@@ -34,21 +37,62 @@ type RawApiRecords = { [K in `/${Lowercase<string>}`]: Partial<ApiRecord> };
 const { phone, pwd } = user.back.shape;
 const defaultApiRecord = {
   meta: { type: 'post', token: 'access' },
-  in: z.undefined(),
+  in: z.nullable(z.undefined()),
   out: z.undefined(),
 } satisfies ApiRecord;
 
+function crud<
+  T extends string,
+  U extends z.ZodRawShape,
+  L extends keyof U,
+  R extends keyof U,
+>(
+  path: T,
+  schema: z.ZodObject<U>,
+  opts: { id: Record<L, true>; readonly: Record<R, true> },
+) {
+  const id = schema.pick(opts.id as {}) as z.ZodObject<Pick<U, L>>;
+  const editable = schema
+    .omit(opts.id as {})
+    .omit(opts.readonly as {}) as z.ZodObject<Omit<U, L | R>>;
+  const kvs = [
+    [
+      `${path}/c`,
+      {
+        in: editable,
+      },
+    ],
+    [
+      `${path}/u`,
+      {
+        in: editable.partial().merge(id),
+      },
+    ],
+    [
+      `${path}/d`,
+      {
+        in: id,
+      },
+    ],
+    // [
+    //   `${path}/r`,
+    //   {
+    //     in: id,
+    //     out: schema,
+    //   },
+    // ],
+    // [
+    //   `${path}/r/ls`,
+    //   {
+    //     in: param.page,
+    //     out: schema.array(),
+    //   },
+    // ],
+  ] as const;
+  return Object.fromEntries(kvs) as FromEntries<DeepNonReadonly<typeof kvs>>;
+}
+
 const account = {
-  /**注册 */
-  '/signup': {
-    meta: { type: 'post', token: '' },
-    in: user.back
-      .pick({ phone: true, gender: true, birthday: true })
-      .extend({ code: param.code }),
-    out: user.front.own.merge(shared.token),
-  },
-  /**注销 */
-  '/signoff': {},
   '/token/refresh': {
     meta: { type: 'post', token: 'refresh' },
     out: shared.token,
@@ -73,6 +117,7 @@ const account = {
   '/login/token': {
     out: user.front.own,
   },
+  /**发送验证码 */
   '/otp/phone': {
     meta: { type: 'post', token: '' },
     in: phone,
@@ -82,93 +127,69 @@ const account = {
   },
 } satisfies RawApiRecords;
 const usr = {
+  /**注册 */
+  '/usr/c': {
+    meta: { type: 'post', token: '' },
+    in: user.back
+      .pick({ phone: true, pwd: true, gender: true, birthday: true })
+      .extend({ code: param.code }),
+    out: user.front.own.merge(shared.token),
+  },
+  /**注销 */
+  '/usr/d': {},
   /**更改基本信息 */
-  '/usr/edit': {
+  '/usr/u': {
     in: user.front.editable.partial(),
   },
   /**修改密码 */
-  '/usr/pwd/edit': {
+  '/usr/pwd/u': {
     in: z.object({ old: pwd, new: pwd }),
   },
   /**修改手机号 */
-  '/usr/phone/edit': {
+  '/usr/phone/u': {
     in: z.object({ old: phone, new: phone, code: param.code }),
   },
   /**添加邮箱 */
-  '/usr/email/add': {
+  '/usr/email/c': {
     in: z.string().email(),
   },
   /**删除邮箱 */
-  '/usr/email/remove': {
+  '/usr/email/d': {
     in: z.string().email(),
   },
   /**退订邮件消息 */
-  '/usr/email/unsubscribe': {
+  '/usr/email/unsub': {
     meta: { type: 'get', token: '' },
   },
   /**参与者库 */
-  '/usr/ptc/list': {
+  '/usr/ptc/ls': {
     in: param.page.extend({
       filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
     }),
     out: user_participant.front.array(),
   },
-  '/usr/ptc/add': {
+  '/usr/ptc/c': {
     in: param.uid.merge(param.rtype),
   },
-  '/usr/ptc/remove': {
+  '/usr/ptc/d': {
     in: param.uid.merge(param.rtype),
   },
-} satisfies RawApiRecords;
-const recruit = {
-  '/recruit/add': {
-    in: recruitment.front,
-  },
-  '/recruit/edit': {
-    in: recruitment.front.partial(),
-  },
-  '/recruit/remove': {
-    in: param.rtype,
-  },
-  '/recruit/ptc/list': {
-    in: param.page.merge(param.eid).merge(param.rtype),
-    out: recruitment_participant.front.array(),
-  },
-  '/recruit/ptc/approve': {
-    in: param.rtype.merge(param.uid),
-  },
-  '/recruit/ptc/reject': {
-    in: param.rtype.merge(param.uid),
-  },
-  /**更改日程 */
-  // 'event': {
-  //   in: param.uid
-  //     .merge(param.rtype)
-  //     .extend({ starts: shared.timestamp.array() }),
-  // },
 } satisfies RawApiRecords;
 const exp = {
-  '/exp/add': {
-    out: experiment.front.own.data,
-  },
-  '/exp/edit': {
-    in: experiment.front.own.data.omit({ state: true }),
-  },
-  '/exp/remove': {
-    in: param.eid,
-  },
-  '/exp/publish': {
+  ...crud('/exp', experiment.front.own.data, {
+    id: { eid: true },
+    readonly: { state: true, uid: true },
+  }),
+  '/exp/pub': {
     in: param.eid,
   },
   '/exp/join': {
-    in: param.eid.merge(param.rtype).extend({
+    in: param.rcid.extend({
       // starts: shared.timestamp.array().optional(),
     }),
   },
   '/exp/push': {
-    in: param.eid.merge(param.rtype).extend({
-      uids: param.uid.shape.uid.array(),
-    }),
+    in: param.rcid.extend({ uids: param.uid.shape.uid.array() }),
   },
   /**公开项目 */
   '/exp/public': {
@@ -181,10 +202,10 @@ const exp = {
     in: param.eid,
     out: experiment.front.public.supply,
   },
-  '/exp/public/list': {
+  '/exp/public/ls': {
     meta: { type: 'post', token: '' },
     in: param.page.extend({
-      filter: experiment.front.filter.data.omit({ state: true }).optional(),
+      filter: experiment.front.filter.data.omit({ state: true }),
     }),
     out: experiment.front.public.preview.array(),
   },
@@ -201,7 +222,7 @@ const exp = {
     in: param.eid,
     out: experiment.front.joined.supply,
   },
-  '/exp/joined/list': {
+  '/exp/joined/ls': {
     in: param.page.extend({
       filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
     }),
@@ -216,33 +237,71 @@ const exp = {
     in: param.eid,
     out: experiment.front.own.supply,
   },
-  '/exp/own/list': {
+  '/exp/own/ls': {
     in: param.page.extend({
       filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
     }),
     out: experiment.front.own.preview.array(),
   },
 } satisfies RawApiRecords;
+const recruit = {
+  '/recruit/ls': {
+    in: param.page.merge(param.eid),
+    out: recruitment.front.merge(param.rid).array(),
+  },
+  '/recruit/c': {
+    in: recruitment.front.merge(param.eid),
+  },
+  '/recruit/u': {
+    in: recruitment.front.partial().merge(param.rid),
+  },
+  '/recruit/d': {
+    in: param.rid,
+  },
+  '/recruit/condition/ls': {
+    in: param.page.merge(param.rid),
+    out: recruitment_condition.front
+      .merge(param.rcid)
+      .extend({ count: posInt })
+      .array(),
+  },
+  '/recruit/condition/c': {
+    in: recruitment_condition.front.merge(param.rid),
+  },
+  '/recruit/condition/u': {
+    in: recruitment_condition.front.partial().merge(param.rcid),
+  },
+  '/recruit/condition/d': {
+    in: param.rcid,
+  },
+  '/recruit/ptc/ls': {
+    in: param.page.merge(param.rcid),
+    out: recruitment_participant.front.array(),
+  },
+  '/recruit/ptc/d': {
+    in: param.rcid.merge(param.uid),
+  },
+} satisfies RawApiRecords;
 const msg = {
   '/msg/stream': {
     meta: { type: 'ws', token: '' }, // debug only
-    out: shared.message,
+    out: message.front,
   },
-  '/msg/list': {
+  '/msg/ls': {
     in: param.page,
-    out: shared.message.array(),
+    out: message.front.array(),
   },
   '/msg/read': {
-    in: param.uid.extend({ mid: shared.message.shape.mid }),
+    in: message.front.pick({ mid: true }),
   },
 } satisfies RawApiRecords;
 /**举报 */
 const rpt = {
   '/rpt/exp': {
-    in: report.experiment,
+    in: report.front,
   },
   '/rpt/user': {
-    in: report.user,
+    in: report.front,
   },
 } satisfies RawApiRecords;
 // const sched = {

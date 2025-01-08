@@ -9,7 +9,7 @@ import {
   mdiPublish,
 } from '@mdi/js';
 import {
-  birth_age,
+  birth2age,
   ExperimentState,
   ExperimentType,
   Gender,
@@ -30,7 +30,7 @@ import { Table } from '~/components/table';
 import { c } from '~/ts/client';
 import { useExperimentData, usePopup, useTempModel } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
-import { error } from '~/ts/util';
+import { definePageComponent, error } from '~/ts/util';
 
 const {
   exp,
@@ -71,7 +71,7 @@ const _Table = () => (
             variant="text"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
-              c['/exp/remove'].send(
+              c['/exp/d'].send(
                 { eid: item.eid },
                 {
                   0(res) {
@@ -118,7 +118,7 @@ const _Fab = () =>
       absolute
       app
       onClick={() => {
-        c['/exp/add'].send(void 0, {
+        c['/exp/c'].send(void 0, {
           0(res) {
             exp.list.push(res.data);
             exp.selected = res.data;
@@ -140,7 +140,7 @@ const _Detail = defineComponent(() => {
   async function save() {
     const exp = check();
     if (temp.hasChange.value) {
-      await c['/exp/edit'].send(exp, {
+      await c['/exp/u'].send(exp, {
         0(res) {
           temp.save();
           snackbar.show({ text: `${exp.title} 已保存`, color: 'success' });
@@ -153,7 +153,7 @@ const _Detail = defineComponent(() => {
   async function publish() {
     await save();
     const exp = check();
-    c['/exp/publish'].send(
+    c['/exp/pub'].send(
       { eid: exp.eid },
       {
         0(res) {
@@ -226,7 +226,7 @@ const _PtcList = () => {
         {
           title: '年龄',
           key: 'birthday',
-          value: (item) => birth_age(item.birthday),
+          value: (item) => birth2age(item.birthday),
         },
         {
           title: '操作',
@@ -242,7 +242,7 @@ const _PtcList = () => {
                 size="small"
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
-                  c['/recruit/ptc/approve'].send(
+                  c['/recruit/ptc/c'].send(
                     { rtype: ptc.rtype, uid: item.uid },
                     { 0(res) {} },
                   );
@@ -255,7 +255,7 @@ const _PtcList = () => {
                 size="small"
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
-                  c['/recruit/ptc/reject'].send(
+                  c['/recruit/ptc/d'].send(
                     { rtype: ptc.rtype, uid: item.uid },
                     {
                       0(res) {
@@ -314,12 +314,9 @@ export const route: LooseRouteRecord = {
     },
   },
 };
-export default defineComponent({
-  name: 'Own',
-  beforeRouteEnter(to, from, next) {
-    fetchExpList().finally(next);
-  },
-  setup() {
+export default definePageComponent(
+  import.meta.url,
+  () => {
     const { mobile } = useDisplay();
     return () => (
       <VMain class={'h-100 d-grid ' + (mobile.value ? '' : 'grid-col-3')}>
@@ -332,4 +329,9 @@ export default defineComponent({
       </VMain>
     );
   },
-});
+  {
+    beforeRouteEnter(to, from, next) {
+      fetchExpList().finally(next);
+    },
+  },
+);

@@ -3,6 +3,7 @@ import { Config } from '@alicloud/openapi-client';
 import { RuntimeOptions } from '@alicloud/tea-util';
 import pino from 'pino';
 import { env } from 'shared';
+import { log } from '~/util';
 
 const client = new AliyunClient(
   Object.assign(
@@ -17,7 +18,7 @@ const client = new AliyunClient(
 );
 
 export const sms = {
-  /**@todo: implement SMS sending */
+  /**@TODO: implement SMS sending */
   async send(phone: string, code: string) {
     return true;
     const sendSmsRequest = new SendSmsRequest({
@@ -33,7 +34,7 @@ export const sms = {
       return true;
     } catch (error: any) {
       // 错误 message
-      console.error('SMS error', error.message, error.data);
+      log.error('SMS error', error.message, error.data);
       return false;
     }
   },
