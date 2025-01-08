@@ -48,7 +48,7 @@ function pwdEditInput() {
                 loading={loading.value}
                 onCLick={() =>
                   isValid.value &&
-                  c['/usr/pwd/u'].with(progress(loading, 'value')).send(data)
+                  c['/usr/pwd/edit'].with(progress(loading, 'value')).send(data)
                 }
               />
             ),
@@ -132,7 +132,7 @@ export default defineComponent(
                     color: 'error',
                     icon: mdiDeleteOutline,
                     onClick() {
-                      c['/usr/email/d'].send(e);
+                      c['/usr/email/remove'].send(e);
                     },
                   }}
                 />

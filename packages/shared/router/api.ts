@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { mapValues } from '..';
 import {
   experiment,
+  message,
   output,
   param,
   recruitment,
@@ -39,16 +40,6 @@ const defaultApiRecord = {
 } satisfies ApiRecord;
 
 const account = {
-  /**注册 */
-  '/signup': {
-    meta: { type: 'post', token: '' },
-    in: user.back
-      .pick({ phone: true, gender: true, birthday: true })
-      .extend({ code: param.code }),
-    out: user.front.own.merge(shared.token),
-  },
-  /**注销 */
-  '/signoff': {},
   '/token/refresh': {
     meta: { type: 'post', token: 'refresh' },
     out: shared.token,
@@ -73,6 +64,7 @@ const account = {
   '/login/token': {
     out: user.front.own,
   },
+  /**发送验证码 */
   '/otp/phone': {
     meta: { type: 'post', token: '' },
     in: phone,
@@ -82,28 +74,38 @@ const account = {
   },
 } satisfies RawApiRecords;
 const usr = {
+  /**注册 */
+  '/usr/c': {
+    meta: { type: 'post', token: '' },
+    in: user.back
+      .pick({ phone: true, pwd: true, gender: true, birthday: true })
+      .extend({ code: param.code }),
+    out: user.front.own.merge(shared.token),
+  },
+  /**注销 */
+  '/usr/d': {},
   /**更改基本信息 */
-  '/usr/edit': {
+  '/usr/u': {
     in: user.front.editable.partial(),
   },
   /**修改密码 */
-  '/usr/pwd/edit': {
+  '/usr/pwd/u': {
     in: z.object({ old: pwd, new: pwd }),
   },
   /**修改手机号 */
-  '/usr/phone/edit': {
+  '/usr/phone/u': {
     in: z.object({ old: phone, new: phone, code: param.code }),
   },
   /**添加邮箱 */
-  '/usr/email/add': {
+  '/usr/email/c': {
     in: z.string().email(),
   },
   /**删除邮箱 */
-  '/usr/email/remove': {
+  '/usr/email/d': {
     in: z.string().email(),
   },
   /**退订邮件消息 */
-  '/usr/email/unsubscribe': {
+  '/usr/email/unsub': {
     meta: { type: 'get', token: '' },
   },
   /**参与者库 */
@@ -113,62 +115,33 @@ const usr = {
     }),
     out: user_participant.front.array(),
   },
-  '/usr/ptc/add': {
+  '/usr/ptc/c': {
     in: param.uid.merge(param.rtype),
   },
-  '/usr/ptc/remove': {
+  '/usr/ptc/d': {
     in: param.uid.merge(param.rtype),
   },
-} satisfies RawApiRecords;
-const recruit = {
-  '/recruit/add': {
-    in: recruitment.front,
-  },
-  '/recruit/edit': {
-    in: recruitment.front.partial(),
-  },
-  '/recruit/remove': {
-    in: param.rtype,
-  },
-  '/recruit/ptc/list': {
-    in: param.page.merge(param.eid).merge(param.rtype),
-    out: recruitment_participant.front.array(),
-  },
-  '/recruit/ptc/approve': {
-    in: param.rtype.merge(param.uid),
-  },
-  '/recruit/ptc/reject': {
-    in: param.rtype.merge(param.uid),
-  },
-  /**更改日程 */
-  // 'event': {
-  //   in: param.uid
-  //     .merge(param.rtype)
-  //     .extend({ starts: shared.timestamp.array() }),
-  // },
 } satisfies RawApiRecords;
 const exp = {
-  '/exp/add': {
-    out: experiment.front.own.data,
+  '/exp/c': {
+    in: experiment.front.own.data.omit({ state: true, eid: true, uid: true }),
   },
-  '/exp/edit': {
-    in: experiment.front.own.data.omit({ state: true }),
+  '/exp/u': {
+    in: experiment.front.own.data.omit({ state: true, uid: true }),
   },
-  '/exp/remove': {
+  '/exp/d': {
     in: param.eid,
   },
-  '/exp/publish': {
+  '/exp/pub': {
     in: param.eid,
   },
   '/exp/join': {
-    in: param.eid.merge(param.rtype).extend({
+    in: param.rcid.extend({
       // starts: shared.timestamp.array().optional(),
     }),
   },
   '/exp/push': {
-    in: param.eid.merge(param.rtype).extend({
-      uids: param.uid.shape.uid.array(),
-    }),
+    in: param.rcid.extend({ uids: param.uid.shape.uid.array() }),
   },
   /**公开项目 */
   '/exp/public': {
@@ -184,7 +157,7 @@ const exp = {
   '/exp/public/list': {
     meta: { type: 'post', token: '' },
     in: param.page.extend({
-      filter: experiment.front.filter.data.omit({ state: true }).optional(),
+      filter: experiment.front.filter.data.omit({ state: true }),
     }),
     out: experiment.front.public.preview.array(),
   },
@@ -223,26 +196,53 @@ const exp = {
     out: experiment.front.own.preview.array(),
   },
 } satisfies RawApiRecords;
+const recruit = {
+  '/recruit/c': {
+    in: recruitment.front,
+  },
+  '/recruit/u': {
+    in: recruitment.front.partial(),
+  },
+  '/recruit/d': {
+    in: param.rtype,
+  },
+  '/recruit/ptc/list': {
+    in: param.page.merge(param.eid).merge(param.rtype),
+    out: recruitment_participant.front.array(),
+  },
+  '/recruit/ptc/c': {
+    in: param.rtype.merge(param.uid),
+  },
+  '/recruit/ptc/d': {
+    in: param.rtype.merge(param.uid),
+  },
+  /**更改日程 */
+  // 'event': {
+  //   in: param.uid
+  //     .merge(param.rtype)
+  //     .extend({ starts: shared.timestamp.array() }),
+  // },
+} satisfies RawApiRecords;
 const msg = {
   '/msg/stream': {
     meta: { type: 'ws', token: '' }, // debug only
-    out: shared.message,
+    out: message.front,
   },
   '/msg/list': {
     in: param.page,
-    out: shared.message.array(),
+    out: message.front.array(),
   },
   '/msg/read': {
-    in: param.uid.extend({ mid: shared.message.shape.mid }),
+    in: message.front.pick({ mid: true }),
   },
 } satisfies RawApiRecords;
 /**举报 */
 const rpt = {
   '/rpt/exp': {
-    in: report.experiment,
+    in: report.front,
   },
   '/rpt/user': {
-    in: report.user,
+    in: report.front,
   },
 } satisfies RawApiRecords;
 // const sched = {

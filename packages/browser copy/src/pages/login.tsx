@@ -84,7 +84,7 @@ const PhoneLogin = defineComponent(() => {
         variant: 'flat' as const,
         blick: true,
         onClick: () => {
-          c['/usr/c'].send(signupData, {
+          c['/signup'].send(signupData, {
             0(res) {
               snackbar.show({ text: '注册成功', color: 'success' });
               signup_dialog.close();

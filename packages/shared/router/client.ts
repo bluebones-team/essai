@@ -76,7 +76,7 @@ export function createClient(opts: {
       //@ts-ignore
       cb(ctx.output);
     });
-  class ProxyClient<P extends Path> {
+  class ProxyClient<P extends keyof ApiRecords> {
     constructor(public path: P) {
       this.path = path;
     }
@@ -115,7 +115,7 @@ export function createClient(opts: {
       return client.send(ctx);
     }
   }
-  return new Proxy({} as { [P in keyof ApiRecordTypes]: ProxyClient<P> }, {
+  return new Proxy({} as { [P in keyof ApiRecords]: ProxyClient<P> }, {
     get: (_, path: Path) => new ProxyClient(path),
   });
 }

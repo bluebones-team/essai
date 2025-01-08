@@ -53,7 +53,7 @@ const EditBtn = defineComponent(function () {
         text: '更新',
         onClick: () =>
           isValid.value &&
-          c['/usr/u'].with(progress(loading, 'value')).send(data),
+          c['/usr/edit'].with(progress(loading, 'value')).send(data),
       },
     ],
   }));
@@ -81,7 +81,7 @@ const DeleteUserBtn = defineComponent(function () {
         color: 'error',
         loading: loading.value,
         onClick() {
-          c['/usr/d'].with(progress(loading, 'value')).send(void 0, {
+          c['/signoff'].with(progress(loading, 'value')).send(void 0, {
             0() {
               udata.value = void 0;
               storage.removeToken();

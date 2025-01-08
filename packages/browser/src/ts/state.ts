@@ -40,7 +40,7 @@ export const setting = reactive({
   },
 });
 /**消息 */
-export const messages = ref<Shared['message'][]>([]);
+export const messages = ref<FTables['message'][]>([]);
 
 // 初始化
 setTimeout(() => {

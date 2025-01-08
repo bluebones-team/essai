@@ -24,7 +24,7 @@ const state = reactive({
       ? "totalEnum can't be MessageType"
       : MessageType | typeof totalEnum
   >(totalEnum),
-  message: ref<Shared['message']>(),
+  message: ref<FTables['message']>(),
 });
 
 const _Nav = defineComponent(() => {
@@ -78,9 +78,11 @@ const _MsgList = defineComponent(() => {
   );
   const groups = computed(() => {
     const msgs = messages.value
-      .toSorted((a, b) => b.t - a.t)
+      .toSorted((a, b) => b.created_at - a.created_at)
       .map((e) => {
-        const [day, time] = dateFormat(e.t, 'YYYY/MM/DD hh:mm').split(' ');
+        const [day, time] = dateFormat(e.created_at, 'YYYY/MM/DD hh:mm').split(
+          ' ',
+        );
         return Object.assign(e, { day, time });
       });
     return map(
@@ -126,7 +128,7 @@ const _Detail = defineComponent(() => {
     timer = window.setTimeout(() => {
       if (mobile.value && !detail_dialog.isShow.value) return;
       c['/msg/read'].send(
-        { uid: msg.uid, mid: msg.mid },
+        { mid: msg.mid },
         {
           0() {
             msg.read = true;

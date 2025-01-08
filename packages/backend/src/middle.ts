@@ -65,7 +65,7 @@ export const catcher: Middle<Context> = async (ctx, next) => {
     await next();
   } catch (err) {
     log.error(err);
-    ctx.output = o('fail', 'unknown error');
+    ctx.output = o.fail('unknown error');
   }
 };
 

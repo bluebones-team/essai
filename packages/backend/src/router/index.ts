@@ -20,7 +20,7 @@ declare module 'shared/router' {
       api: ApiRecords[P];
       token?: string;
       /**user data from token verification  */
-      user?: BTables['user'];
+      user: BTables['user'];
     }
   }
 }
@@ -33,18 +33,18 @@ const router = new Router({
     }),
 })
   .use(function checkApi(ctx, next) {
-    if (!ctx.api) return o('fail', 'api not found');
+    if (!ctx.api) return o.fail('api not found');
     if (
       ctx.api.meta.type !==
       (isWsContext(ctx) ? 'ws' : ctx.req.method?.toLowerCase())
     )
-      return o('fail', 'method not allowed');
+      return o.fail('method not allowed');
     return next();
   })
   .use(
     zodCheck({
       type: 'in',
-      onFail: (ctx, reason) => o('fail', JSON.stringify(reason)),
+      onFail: (ctx, reason) => o.fail(JSON.stringify(reason)),
     }),
   )
   .use(function auth(ctx, next) {
@@ -69,6 +69,7 @@ export const routerMiddle: ComposedMiddle<BaseContext> = async (ctx) => {
       api: apiRecords[ctx.path as Path],
       path: ctx.path as Path,
       token: ctx.req.headers.authorization,
+      user: null as any,
     },
   );
   await composedMiddle(newCtx);

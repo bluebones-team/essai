@@ -3,13 +3,13 @@ import { difference, mapValues } from '..';
 import {
   ExperimentState,
   ExperimentType,
+  FeedbackType,
   Gender,
   JoinState,
   MessageType,
   OutputCode,
   RecruitmentType,
-  ReportProjectType,
-  ReportUserType,
+  ReportType,
   type EnumMeta,
 } from './enum';
 
@@ -71,18 +71,6 @@ function diff<const U extends {}, const T extends U>(
   );
 }
 
-// 参数验证
-const posInt = z.number().int().min(1);
-const max20Str = z.string().max(20);
-const max100Str = z.string().max(100);
-export const param = {
-  page: z.object({ pn: posInt, ps: posInt }),
-  uid: z.object({ uid: posInt }),
-  eid: z.object({ eid: posInt }),
-  /**招募类型、参与者类型 */
-  rtype: z.object({ rtype: enums(RecruitmentType).meta({ text: '招募类型' }) }),
-  code: z.string().length(6, '验证码长度应为 6 位').meta({ text: '验证码' }),
-};
 //@ts-ignore
 export function output<T extends z.ZodType = z.ZodAny>(data: T = z.any()) {
   const dataEnums = [OutputCode.Success.value];
@@ -106,6 +94,19 @@ export type ExtractOutput<
   U extends OutputCode,
 > = T extends { code: infer C } ? (U extends C ? T : never) : never;
 
+// 参数验证
+const posInt = z.number().int().min(1);
+const max20Str = z.string().max(20);
+const max100Str = z.string().max(100);
+export const param = {
+  page: z.object({ pn: posInt, ps: posInt }),
+  uid: z.object({ uid: posInt }),
+  eid: z.object({ eid: posInt }),
+  /**招募类型、参与者类型 */
+  rtype: z.object({ rtype: enums(RecruitmentType).meta({ text: '招募类型' }) }),
+  code: z.string().length(6, '验证码长度应为 6 位').meta({ text: '验证码' }),
+  rcid: z.object({ rcid: z.string().uuid() }),
+};
 export const shared = (function () {
   /**时间戳, 单位s */
   const timestamp = posInt.min(0).brand<'timestamp'>().meta({ type: 'date' });
@@ -114,15 +115,6 @@ export const shared = (function () {
     .min(0)
     .max(2 * 60)
     .brand<'duration'>();
-  const message = param.uid.extend({
-    mid: posInt,
-    type: enums(MessageType),
-    title: max20Str,
-    content: max100Str,
-    /**创建时间 */
-    t: timestamp,
-    read: z.boolean(),
-  });
   const position = z.object({
     detail: z.string().max(30),
   });
@@ -130,7 +122,7 @@ export const shared = (function () {
     access: z.string(),
     refresh: z.string(),
   });
-  return { timestamp, duration, message, position, token };
+  return { timestamp, duration, position, token };
 })();
 
 export const user = (function () {
@@ -185,7 +177,7 @@ export const recruitment_condition = (function () {
   const base = z.object({ size: posInt }); /* .merge(user_filter) */
   return {
     front: base.extend({ current: posInt }),
-    back: base.extend({ rcid: posInt, rid: posInt }),
+    back: base.merge(param.rcid).extend({ rid: posInt }),
   };
 })();
 /**招募的参与者 */
@@ -193,7 +185,7 @@ export const recruitment_participant = {
   front: user.front.public
     .merge(param.rtype)
     .extend({ state: enums(JoinState) }),
-  back: param.uid.extend({ rcid: posInt, state: enums(JoinState) }),
+  back: param.uid.merge(param.rcid).extend({ state: enums(JoinState) }),
 };
 export const recruitment = (function () {
   const base = param.eid.merge(param.rtype).extend({
@@ -275,17 +267,42 @@ export const experiment = (function () {
   };
 })();
 export type ExperimentFrontDataType = 'public' | 'joined' | 'own';
-/**举报 */
-export const report = {
-  experiment: param.eid.extend({
-    type: enums(ReportProjectType),
+export const report = (function () {
+  const front = z.object({
+    /**被举报对象 id */
+    rid: posInt,
+    type: enums(ReportType),
     content: max100Str,
-  }),
-  user: param.uid.extend({
-    type: enums(ReportUserType),
+  });
+  return {
+    front,
+    back: front.merge(param.uid),
+  };
+})();
+export const message = (function () {
+  const front = z.object({
+    mid: z.string().uuid(),
+    type: enums(MessageType),
+    title: max20Str,
     content: max100Str,
-  }),
-};
+    read: z.boolean(),
+    created_at: shared.timestamp,
+  });
+  return {
+    front,
+    back: front.merge(param.uid),
+  };
+})();
+export const feedback = (function () {
+  const front = z.object({
+    type: enums(FeedbackType),
+    content: max100Str,
+  });
+  return {
+    front,
+    back: front.merge(param.uid),
+  };
+})();
 
 export const tables = {
   user,
@@ -294,4 +311,7 @@ export const tables = {
   recruitment,
   recruitment_condition,
   recruitment_participant,
+  report,
+  message,
+  feedback,
 } satisfies Record<string, { front: {}; back: z.ZodType }>;

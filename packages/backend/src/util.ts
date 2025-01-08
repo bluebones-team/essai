@@ -6,28 +6,31 @@ import { OutputCode, type ExtractOutput, type Output } from 'shared/data';
 import WebSocket from 'ws';
 import type { z } from 'zod';
 
-/**create success output */
-export function o<T extends any = undefined>(
-  type: 'succ',
-  data?: T,
-): ExtractOutput<z.infer<Output<T>>, 0>;
-/**create failure output */
-export function o(type: 'fail', msg: string): ExtractOutput<z.infer<Output>, 1>;
-/**create output by code */
-export function o<T extends OutputCode>(
-  code: T,
-): ExtractOutput<z.infer<Output>, T>;
-/**check output's type */
-export function o<T extends z.infer<Output>>(data: T): T;
-export function o(...[p0, p1]: any[]) {
-  if (typeof p0 === 'object') return p0;
-  //@ts-ignore
-  if (typeof p0 === 'number') return { code: p0, msg: OutputCode[p0].msg };
-  if (p0 === 'succ')
-    return { code: OutputCode.Success.value, msg: '', data: p1 };
-  if (p0 === 'fail') return { code: OutputCode.Fail.value, msg: p1 };
-  throw new Error('Invalid output arguments');
-}
+/**响应数据构造器 */
+export const o = Object.assign(
+  ((e: unknown) =>
+    //@ts-ignore
+    typeof e === 'number' ? { code: e, msg: OutputCode[e].msg } : e) as {
+    <T extends z.infer<Output>>(data: T): T;
+    <T extends OutputCode>(code: T): ExtractOutput<z.infer<Output>, T>;
+  },
+  {
+    //@ts-ignore
+    is: <T>(data: T): data is z.infer<Output> =>
+      Object.prototype.hasOwnProperty.call(data, 'code') &&
+      Object.prototype.hasOwnProperty.call(data, 'msg'),
+    succ: <T extends any = undefined>(data?: T) => ({
+      code: OutputCode.Success.value,
+      msg: '',
+      data: data as T,
+    }),
+    fail: (msg: string) => ({ code: OutputCode.Fail.value, msg }),
+    error: (reason: string, key: string, value: unknown) => {
+      log.error({ key, value, reason }, 'DB error');
+      return o(OutputCode.DBError.value);
+    },
+  },
+);
 
 export const createContext = {
   base(req: IncomingMessage): BaseContext {

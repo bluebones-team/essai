@@ -8,8 +8,8 @@ type Infer<T> = T extends z.ZodType
     : 'T should be a ZodType or an object';
 declare global {
   namespace ReportData {
-    type Project = z.infer<typeof report.experiment>;
-    type User = z.infer<typeof report.user>;
+    type Project = z.infer<typeof report.front>;
+    type User = z.infer<typeof report.front>;
   }
   type Shared = Infer<typeof shared>;
   type Tables = Infer<typeof tables>;

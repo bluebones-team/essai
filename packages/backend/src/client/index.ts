@@ -3,67 +3,116 @@ import { createClient } from 'redis';
 import { each, env } from 'shared';
 export * from './sms';
 
-const extension = {
+type Sql = [creator: (idx?: number) => string, values: unknown[]];
+export const sql = {
+  empty: [() => '', []] satisfies Sql,
+  merge(...sqls: Sql[]) {
+    const { clause, values } = sqls.reduce(
+      (acc, [creator, values]) => {
+        const clause = creator(acc.idx);
+        return {
+          idx: acc.idx + values.length,
+          clause:
+            acc.clause && clause
+              ? `${acc.clause} ${clause}`
+              : acc.clause || clause,
+          values: [...acc.values, ...values],
+        };
+      },
+      { idx: 0, clause: '', values: [] as unknown[] },
+    );
+    return [clause, values] as const;
+  },
+  where(conditions: {}) {
+    return [
+      (idx = 0) => {
+        const clause = Object.keys(conditions)
+          .map((k, i) => `${k} = $${idx + i + 1}`)
+          .join(' AND ');
+        return clause && `WHERE ${clause}`;
+      },
+      Object.values(conditions),
+    ] satisfies Sql;
+  },
+  page(page: { pn?: number; ps: number }) {
+    const { pn = 1, ps } = page;
+    return [
+      (idx = 0) => `LIMIT $${idx + 1} OFFSET $${idx + 2}`,
+      [ps, (pn - 1) * ps],
+    ] satisfies Sql;
+  },
+  set(data: {}) {
+    return [
+      (idx = 0) => {
+        const clause = Object.keys(data)
+          .map((k, i) => `${k} = $${idx + i + 1}`)
+          .join(', ');
+        return clause && `SET ${clause}`;
+      },
+      Object.values(data),
+    ] satisfies Sql;
+  },
+  values(datas: {}[]) {
+    return [
+      (idx = 0) => {
+        if (datas.length === 0) return '';
+        const keys = Object.keys(datas[0]);
+        const len = keys.length;
+        if (len === 0) return '';
+        const clause = datas
+          .map(
+            (_, i) =>
+              `(${keys.map((_, j) => `$${idx + j + 1 + len * i}`).join(', ')})`,
+          )
+          .join(', ');
+        return clause && `(${keys.join(', ')}) VALUES ${clause}`;
+      },
+      datas.flatMap((e) => Object.values(e)),
+    ] satisfies Sql;
+  },
+};
+const db_extensions = {
   async create<T extends keyof BTables>(
     table: T,
-    data: Omit<BTables[T], `${string}id`>,
-  ): Promise<BTables[T]> {
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const placeholders = keys.map((_, idx) => `$${idx + 1}`).join(', ');
-
-    const query = `INSERT INTO "${table}" (${keys.join(', ')}) VALUES (${placeholders}) RETURNING *;`;
+    //@ts-ignore
+    ...datas: PartialByKey<BTables[T], `${string}id`>[]
+  ): Promise<BTables[T][]> {
+    const [clause, values] = sql.merge(sql.values(datas));
+    const query = `INSERT INTO "${table}" ${clause} RETURNING *;`;
     const result = await db.query(query, values);
-    return result.rows[0];
+    return result.rows;
   },
   async read<T extends keyof BTables>(
     table: T,
     conditions: Partial<BTables[T]>,
+    page?: { pn?: number; ps: number },
   ): Promise<BTables[T][]> {
-    const keys = Object.keys(conditions);
-    const values = Object.values(conditions);
-    const whereClause = keys
-      .map((key, idx) => `${key} = $${idx + 1}`)
-      .join(' AND ');
-
-    const query = `SELECT * FROM "${table}"${keys.length ? ` WHERE ${whereClause}` : ''};`;
+    const [clause, values] = sql.merge(
+      sql.where(conditions),
+      page ? sql.page(page) : sql.empty,
+    );
+    const query = `SELECT * FROM "${table}" ${clause};`;
     const result = await db.query(query, values);
     return result.rows;
   },
   async update<T extends keyof BTables>(
     table: T,
+    conditions: Partial<BTables[T]>,
     data: Partial<BTables[T]>,
-    conditions: Partial<BTables[T]> = {},
-  ) {
-    const dataKeys = Object.keys(data);
-    const dataValues = Object.values(data);
-    const dataSetClause = dataKeys
-      .map((key, idx) => `${key} = $${idx + 1}`)
-      .join(', ');
-
-    const conditionKeys = Object.keys(conditions);
-    const conditionValues = Object.values(conditions);
-    const whereClause = conditionKeys
-      .map((key, idx) => `${key} = $${idx + dataKeys.length + 1}`)
-      .join(' AND ');
-
-    const query = `UPDATE "${table}" SET ${dataSetClause} WHERE ${whereClause} RETURNING *;`;
-    const result = await db.query(query, [...dataValues, ...conditionValues]);
-    return result.rows[0];
+  ): Promise<BTables[T][]> {
+    const [clause, values] = sql.merge(sql.set(data), sql.where(conditions));
+    const query = `UPDATE "${table}" ${clause} RETURNING *;`;
+    const result = await db.query(query, values);
+    return result.rows;
   },
   async delete<T extends keyof BTables>(
     table: T,
     conditions: Partial<BTables[T]> = {},
-  ) {
-    const keys = Object.keys(conditions);
-    const values = Object.values(conditions);
-    const whereClause = keys
-      .map((key, idx) => `${key} = $${idx + 1}`)
-      .join(' AND ');
-
-    const query = `DELETE FROM "${table}" WHERE ${whereClause} RETURNING *;`;
+  ): Promise<BTables[T][]> {
+    const [clause, values] = sql.merge(sql.where(conditions));
+    const query = `DELETE FROM "${table}" ${clause} RETURNING *;`;
     const result = await db.query(query, values);
-    return result.rows[0];
+    return result.rows;
   },
 };
 
@@ -72,7 +121,7 @@ export const db = Object.assign(
   new Pool({ connectionString: env('DB_URL') }).on('error', (err) =>
     console.error('Unexpected error on idle client', err),
   ),
-  extension,
+  db_extensions,
 );
 /**@see https://redis.io/docs/latest/develop/clients/nodejs/ */
 export const redis = createClient({ url: env('REDIS_URL') });

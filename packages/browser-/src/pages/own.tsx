@@ -71,7 +71,7 @@ const _Table = () => (
             variant="text"
             onClick={(e: MouseEvent) => {
               e.stopPropagation();
-              c['/exp/d'].send(
+              c['/exp/remove'].send(
                 { eid: item.eid },
                 {
                   0(res) {
@@ -118,7 +118,7 @@ const _Fab = () =>
       absolute
       app
       onClick={() => {
-        c['/exp/c'].send(void 0, {
+        c['/exp/add'].send(void 0, {
           0(res) {
             exp.list.push(res.data);
             exp.selected = res.data;
@@ -140,7 +140,7 @@ const _Detail = defineComponent(() => {
   async function save() {
     const exp = check();
     if (temp.hasChange.value) {
-      await c['/exp/u'].send(exp, {
+      await c['/exp/edit'].send(exp, {
         0(res) {
           temp.save();
           snackbar.show({ text: `${exp.title} 已保存`, color: 'success' });
@@ -153,7 +153,7 @@ const _Detail = defineComponent(() => {
   async function publish() {
     await save();
     const exp = check();
-    c['/exp/pub'].send(
+    c['/exp/publish'].send(
       { eid: exp.eid },
       {
         0(res) {
@@ -242,7 +242,7 @@ const _PtcList = () => {
                 size="small"
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
-                  c['/recruit/ptc/c'].send(
+                  c['/recruit/ptc/approve'].send(
                     { rtype: ptc.rtype, uid: item.uid },
                     { 0(res) {} },
                   );
@@ -255,7 +255,7 @@ const _PtcList = () => {
                 size="small"
                 onClick={(e: MouseEvent) => {
                   e.stopPropagation();
-                  c['/recruit/ptc/d'].send(
+                  c['/recruit/ptc/reject'].send(
                     { rtype: ptc.rtype, uid: item.uid },
                     {
                       0(res) {

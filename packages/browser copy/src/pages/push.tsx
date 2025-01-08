@@ -82,7 +82,7 @@ const _LibTable = defineComponent(() => {
               variant="text"
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                c['/usr/ptc/d'].send(
+                c['/usr/ptc/remove'].send(
                   { rtype: ptc.rtype, uid: item.uid },
                   {
                     0(res) {
