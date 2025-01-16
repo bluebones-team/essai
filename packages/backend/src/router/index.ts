@@ -52,7 +52,7 @@ const router = new Router({
     if (!ctx.token) return o(OutputCode.Unauthorizen.value);
     return tokenMgr.verify(ctx.token).then(
       async (payload) => {
-        const user = (await db.read('user', payload))[0];
+        const user = (await db.select('user', payload))[0];
         if (!user) return o(OutputCode.NoUser.value);
         ctx.user = user;
         return next();

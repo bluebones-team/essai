@@ -9,6 +9,7 @@ import {
   mdiLockOutline,
 } from '@mdi/js';
 
+const unique = Symbol();
 type ItemData = Partial<ItemMeta<typeof unique, typeof unique>> &
   Record<string, unknown>;
 type ItemKD<K extends string = string, D extends ItemData = ItemData> = [K, D];

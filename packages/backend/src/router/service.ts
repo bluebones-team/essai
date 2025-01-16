@@ -2,9 +2,9 @@ import { randomInt, randomUUID } from 'crypto';
 import EventEmitter from 'events';
 import { sign, verify } from 'jsonwebtoken';
 import { env, pick } from 'shared';
-import { date2ts, ExperimentState } from 'shared/data';
-import { db, redis, sms } from '../client';
+import { date2ts } from 'shared/data';
 import { o } from '~/util';
+import { db, redis, sms } from '../client';
 
 export type TokenPayload = Pick<BTables['user'], 'phone' | 'uid'>;
 export const tokenMgr = {
@@ -63,12 +63,14 @@ export const msgMgr = new (class extends EventEmitter {
     return super.on(event, listener);
   }
   async send(data: Omit<BTables['message'], 'mid' | 'read' | 'created_at'>) {
-    await db.create('message', {
-      ...data,
-      mid: randomUUID(),
-      read: false,
-      created_at: date2ts(new Date()),
-    });
+    await db
+      .insert('message', {
+        ...data,
+        mid: randomUUID(),
+        read: false,
+        created_at: date2ts(new Date()),
+      })
+      .execute();
     return super.emit('send', data);
   }
 })();
@@ -78,7 +80,7 @@ export const expMgr = {
     const key = expMgr.toCacheKey(eid);
     const text = await redis.get(key);
     if (text) return JSON.parse(text) as BTables['experiment'];
-    const experiments = await db.read('experiment', { eid });
+    const experiments = await db.select('experiment', { eid }).execute();
     if (experiments.length !== 1)
       return o.error('ID重复', 'experiment.eid', eid);
     const experiment = experiments[0];

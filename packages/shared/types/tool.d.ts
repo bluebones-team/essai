@@ -5,9 +5,6 @@ type BooleanKey<T, K extends keyof T = keyof T> = K extends any
   : never;
 type MaybeGetter<T> = (() => T) | T;
 type MaybePromise<T> = T | Promise<T>;
-//@ts-ignore
-const unique: unique symbol = Symbol();
-type Unique = typeof unique;
 
 //#region string
 /**字符串分割 */
