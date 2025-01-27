@@ -1,6 +1,11 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["./**/*", "../shared/middle", "../shared/router/middle.ts"],
+  "include": [
+    "./**/*",
+    "../shared/middle",
+    "../shared/router/middle.ts",
+    "../../test/api.test.js"
+  ],
   "compilerOptions": {
     "paths": {
       "~/*": ["./src/*"]

@@ -15,7 +15,7 @@ const sharedHandler = new Onion<Context>()
   .use(routerMiddle)
   .compose();
 const httpHandler = new Onion<HttpContext>()
-  .use(cors)
+  // .use(cors)
   .use(middleAdaptor(helmet()))
   .use(sharedHandler)
   .compose();

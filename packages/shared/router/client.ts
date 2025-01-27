@@ -3,7 +3,6 @@ import { OutputCode, type ExtractOutput } from '../data';
 import {
   apiRecords,
   type ApiRecords,
-  type ApiRecordTypes,
   type In,
   type Out,
   type Path,
@@ -23,7 +22,7 @@ export function getApiURL<T extends 'http' | 'ws' = 'http'>(
 
 type CodeCbs<O extends { code: OutputCode }> = {
   [K in O['code']]?: (res: ExtractOutput<O, K>) => void;
-};
+} & { _?: (res: O) => void };
 declare module './rpc' {
   namespace Client {
     interface Context<P> {
@@ -71,10 +70,11 @@ export function createClient(opts: {
     )
     .mark('with')
     .use(function callCodeCbs(ctx, next) {
-      const cb = ctx.codeCbs[ctx.output.code];
-      if (!cb) return opts.error(OutputCode.NoUser.msg);
-      //@ts-ignore
-      cb(ctx.output);
+      const cb = ctx.codeCbs[ctx.output.code] ?? ctx.codeCbs._;
+      cb
+        ? //@ts-ignore
+          cb(ctx.output)
+        : opts.error(`no codeCbs: ${ctx.path}:${ctx.output.code}`);
     });
   class ProxyClient<P extends keyof ApiRecords> {
     constructor(public path: P) {
@@ -88,6 +88,7 @@ export function createClient(opts: {
       const path = this.path;
       const api = apiRecords[path];
       if (!api) return opts.error(`invalid path: ${path}`);
+      //@ts-ignore
       const ctx: Client.LeastContext = {
         path,
         input,

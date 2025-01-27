@@ -39,6 +39,57 @@ const defaultApiRecord = {
   out: z.undefined(),
 } satisfies ApiRecord;
 
+function crud<
+  T extends string,
+  U extends z.ZodRawShape,
+  L extends keyof U,
+  R extends keyof U,
+>(
+  path: T,
+  schema: z.ZodObject<U>,
+  opts: { id: Record<L, true>; readonly: Record<R, true> },
+) {
+  const id = schema.pick(opts.id as {}) as z.ZodObject<Pick<U, L>>;
+  const editable = schema
+    .omit(opts.id as {})
+    .omit(opts.readonly as {}) as z.ZodObject<Omit<U, L | R>>;
+  const kvs = [
+    [
+      `${path}/c`,
+      {
+        in: editable,
+      },
+    ],
+    [
+      `${path}/u`,
+      {
+        in: editable.partial().merge(id),
+      },
+    ],
+    [
+      `${path}/d`,
+      {
+        in: id,
+      },
+    ],
+    // [
+    //   `${path}/r`,
+    //   {
+    //     in: id,
+    //     out: schema,
+    //   },
+    // ],
+    // [
+    //   `${path}/r/ls`,
+    //   {
+    //     in: param.page,
+    //     out: schema.array(),
+    //   },
+    // ],
+  ] as const;
+  return Object.fromEntries(kvs) as FromEntries<DeepNonReadonly<typeof kvs>>;
+}
+
 const account = {
   '/token/refresh': {
     meta: { type: 'post', token: 'refresh' },
@@ -123,15 +174,10 @@ const usr = {
   },
 } satisfies RawApiRecords;
 const exp = {
-  '/exp/c': {
-    in: experiment.front.own.data.omit({ state: true, eid: true, uid: true }),
-  },
-  '/exp/u': {
-    in: experiment.front.own.data.omit({ state: true, uid: true }),
-  },
-  '/exp/d': {
-    in: param.eid,
-  },
+  ...crud('/exp', experiment.front.own.data, {
+    id: { eid: true },
+    readonly: { state: true, uid: true },
+  }),
   '/exp/pub': {
     in: param.eid,
   },
@@ -197,17 +243,12 @@ const exp = {
   },
 } satisfies RawApiRecords;
 const recruit = {
-  '/recruit/c': {
-    in: recruitment.front,
-  },
-  '/recruit/u': {
-    in: recruitment.front.partial(),
-  },
-  '/recruit/d': {
-    in: param.rtype,
-  },
+  ...crud('/recruit', recruitment.front, {
+    id: { rid: true },
+    readonly: {},
+  }),
   '/recruit/ptc/list': {
-    in: param.page.merge(param.eid).merge(param.rtype),
+    in: param.page.merge(param.rid),
     out: recruitment_participant.front.array(),
   },
   '/recruit/ptc/c': {

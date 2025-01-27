@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect } from 'kysely';
+import { Kysely, PostgresDialect, sql, type AliasedRawBuilder } from 'kysely';
 import { Pool } from 'pg';
 import { createClient } from 'redis';
 import { each, env } from 'shared';
@@ -12,32 +12,32 @@ const pg = new Pool({ connectionString: env('DB_URL') }).on('error', (err) =>
 export const db = Object.assign(
   new Kysely<BTables>({ dialect: new PostgresDialect({ pool: pg }) }),
   {
-    insert: <T extends keyof BTables>(
+    create: <T extends keyof BTables>(
       table: T,
-      //@ts-ignore
-      ...datas: PartialByKey<BTables[T], `${string}id`>[]
+      ...datas: Omit<
+        BTables[T],
+        //@ts-ignore
+        {
+          user: 'uid';
+          experiment: 'eid';
+          recruitment: 'rid';
+          recruitment_condition: 'rcid';
+        }[T]
+      >[]
     ) =>
       db
         .insertInto(table)
         //@ts-ignore
-        .values(datas)
-        .returningAll(),
-    select: <T extends keyof BTables>(
+        .values(datas),
+    read: <T extends keyof BTables>(
       table: T,
       conditions: Partial<BTables[T]>,
-      page = { pn: 1, ps: 30 },
-    ) => {
-      if (page.ps > 30) page.ps = 30;
-      return (
-        db
-          .selectFrom(table)
-          .selectAll()
-          //@ts-ignore
-          .where((eb) => eb.and(conditions))
-          .limit(page.ps)
-          .offset((page.pn - 1) * page.ps)
-      );
-    },
+    ) =>
+      db
+        .selectFrom(table)
+        .selectAll()
+        //@ts-ignore
+        .where((eb) => eb.and(conditions)),
     update: <T extends keyof BTables>(
       table: T,
       conditions: Partial<BTables[T]>,
@@ -57,6 +57,25 @@ export const db = Object.assign(
         .deleteFrom(table)
         //@ts-ignore
         .where((eb) => eb.and(conditions)),
+    page: (page = { pn: 1, ps: 30 }) =>
+      ((query) => {
+        if (page.ps > 30) page.ps = 30;
+        return query.limit(page.ps).offset((page.pn - 1) * page.ps);
+      }) as Handler<SelectQueryBuilderAny>,
+    /**@see https://kysely.dev/docs/recipes/extending-kysely#a-more-complex-example */
+    values: <R extends LooseObject, A extends string>(
+      records: R[],
+      alias: A,
+    ): AliasedRawBuilder<R, A> => {
+      const keys = Object.keys(records[0]);
+      const values = sql.join(
+        records.map((r) => sql`(${sql.join(keys.map((k) => r[k]))})`),
+      );
+      const wrappedAlias = sql.ref(alias);
+      const wrappedColumns = sql.join(keys.map(sql.ref));
+      const aliasSql = sql`${wrappedAlias}(${wrappedColumns})`;
+      return sql<R>`(values ${values})`.as<A>(aliasSql);
+    },
   },
 );
 /**@see https://redis.io/docs/latest/develop/clients/nodejs/ */
