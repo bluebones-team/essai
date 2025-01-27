@@ -95,9 +95,9 @@ export type ExtractOutput<
 > = T extends { code: infer C } ? (U extends C ? T : never) : never;
 
 // 参数验证
-const posInt = z.number().int().min(1);
-const max20Str = z.string().max(20);
-const max100Str = z.string().max(100);
+export const posInt = z.number().int().min(1);
+export const max20Str = z.string().max(20);
+export const max100Str = z.string().max(100);
 export const param = {
   page: z.object({ pn: posInt, ps: posInt }),
   uid: z.object({ uid: posInt }),
@@ -105,6 +105,7 @@ export const param = {
   /**招募类型、参与者类型 */
   rtype: z.object({ rtype: enums(RecruitmentType).meta({ text: '招募类型' }) }),
   code: z.string().length(6, '验证码长度应为 6 位').meta({ text: '验证码' }),
+  rid: z.object({ rid: posInt }),
   rcid: z.object({ rcid: z.string().uuid() }),
 };
 export const shared = (function () {
@@ -173,22 +174,20 @@ export const user_participant = {
   }),
 };
 
+/**招募的参与者 */
+export const recruitment_participant = {
+  front: user.front.public,
+  back: param.uid.merge(param.rcid),
+};
 export const recruitment_condition = (function () {
   const base = z.object({ size: posInt }); /* .merge(user_filter) */
   return {
-    front: base.extend({ current: posInt }),
-    back: base.merge(param.rcid).extend({ rid: posInt }),
+    front: base,
+    back: base.merge(param.rcid).merge(param.rid),
   };
 })();
-/**招募的参与者 */
-export const recruitment_participant = {
-  front: user.front.public
-    .merge(param.rtype)
-    .extend({ state: enums(JoinState) }),
-  back: param.uid.merge(param.rcid).extend({ state: enums(JoinState) }),
-};
 export const recruitment = (function () {
-  const base = param.eid.merge(param.rtype).extend({
+  const base = param.rtype.extend({
     fee: posInt.max(1e3),
     notice: max100Str.meta({ type: 'textarea' }),
     durations: shared.duration.array().min(1),
@@ -196,10 +195,8 @@ export const recruitment = (function () {
     // should_select_event: z.boolean(),
   });
   return {
-    front: base.extend({
-      conditions: recruitment_condition.front.array().min(1),
-    }),
-    back: base.extend({ rid: posInt }),
+    front: base,
+    back: base.merge(param.eid).merge(param.rid),
   };
 })();
 export const experiment = (function () {
@@ -266,7 +263,10 @@ export const experiment = (function () {
     back: own.data.extend({ created_at: shared.timestamp }),
   };
 })();
-export type ExperimentFrontDataType = 'public' | 'joined' | 'own';
+export type ExperimentFrontDataType = Exclude<
+  keyof typeof experiment.front,
+  'filter'
+>;
 export const report = (function () {
   const front = z.object({
     /**被举报对象 id */

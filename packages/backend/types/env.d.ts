@@ -2,6 +2,7 @@
 
 import type { OutgoingHttpHeaders } from 'http';
 import type { IncomingMessage, ServerResponse } from 'http';
+import type { SelectQueryBuilder } from 'kysely';
 import type { ApiRecord } from 'shared/router';
 import type WebSocket from 'ws';
 
@@ -23,4 +24,5 @@ declare global {
     ws: WebSocket;
   }
   type Context = HttpContext | WsContext;
+  type SelectQueryBuilderAny = SelectQueryBuilder<BTables, keyof BTables, any>;
 }

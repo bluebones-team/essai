@@ -65,11 +65,11 @@ export function pick<T extends LooseObject, K extends keyof T>(
 ) {
   if (!isObject(obj)) return error('pick only supports objects');
   const result: Partial<T> = {};
-  keys.forEach((key) => {
+  for (let key of keys) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       result[key] = obj[key];
     }
-  });
+  }
   return result as Pick<T, K>;
 }
 /**@example omit({a: 1, b: 2, c: 3}, ['a', 'c']) // {b: 2} */
@@ -79,11 +79,11 @@ export function omit<T extends LooseObject, K extends keyof T>(
 ) {
   if (!isObject(obj)) return error('omit only supports objects');
   const result: Partial<T> = { ...obj };
-  keys.forEach((key) => {
+  for (let key of keys) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       delete result[key];
     }
-  });
+  }
   return result as Omit<T, K>;
 }
 /**@example isEqualDeep({a: {b: 1}}, {a: {b: 1}}) // true */

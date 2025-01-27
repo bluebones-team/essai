@@ -5,7 +5,9 @@ import {
   message,
   output,
   param,
+  posInt,
   recruitment,
+  recruitment_condition,
   recruitment_participant,
   report,
   shared,
@@ -38,6 +40,57 @@ const defaultApiRecord = {
   in: z.undefined(),
   out: z.undefined(),
 } satisfies ApiRecord;
+
+function crud<
+  T extends string,
+  U extends z.ZodRawShape,
+  L extends keyof U,
+  R extends keyof U,
+>(
+  path: T,
+  schema: z.ZodObject<U>,
+  opts: { id: Record<L, true>; readonly: Record<R, true> },
+) {
+  const id = schema.pick(opts.id as {}) as z.ZodObject<Pick<U, L>>;
+  const editable = schema
+    .omit(opts.id as {})
+    .omit(opts.readonly as {}) as z.ZodObject<Omit<U, L | R>>;
+  const kvs = [
+    [
+      `${path}/c`,
+      {
+        in: editable,
+      },
+    ],
+    [
+      `${path}/u`,
+      {
+        in: editable.partial().merge(id),
+      },
+    ],
+    [
+      `${path}/d`,
+      {
+        in: id,
+      },
+    ],
+    // [
+    //   `${path}/r`,
+    //   {
+    //     in: id,
+    //     out: schema,
+    //   },
+    // ],
+    // [
+    //   `${path}/r/ls`,
+    //   {
+    //     in: param.page,
+    //     out: schema.array(),
+    //   },
+    // ],
+  ] as const;
+  return Object.fromEntries(kvs) as FromEntries<DeepNonReadonly<typeof kvs>>;
+}
 
 const account = {
   '/token/refresh': {
@@ -123,15 +176,10 @@ const usr = {
   },
 } satisfies RawApiRecords;
 const exp = {
-  '/exp/c': {
-    in: experiment.front.own.data.omit({ state: true, eid: true, uid: true }),
-  },
-  '/exp/u': {
-    in: experiment.front.own.data.omit({ state: true, uid: true }),
-  },
-  '/exp/d': {
-    in: param.eid,
-  },
+  ...crud('/exp', experiment.front.own.data, {
+    id: { eid: true },
+    readonly: { state: true, uid: true },
+  }),
   '/exp/pub': {
     in: param.eid,
   },
@@ -197,38 +245,49 @@ const exp = {
   },
 } satisfies RawApiRecords;
 const recruit = {
+  '/recruit/ls': {
+    in: param.page.merge(param.eid),
+    out: recruitment.front.merge(param.rid).array(),
+  },
   '/recruit/c': {
-    in: recruitment.front,
+    in: recruitment.front.merge(param.eid),
   },
   '/recruit/u': {
-    in: recruitment.front.partial(),
+    in: recruitment.front.partial().merge(param.rid),
   },
   '/recruit/d': {
-    in: param.rtype,
+    in: param.rid,
   },
-  '/recruit/ptc/list': {
-    in: param.page.merge(param.eid).merge(param.rtype),
+  '/recruit/condition/ls': {
+    in: param.page.merge(param.rid),
+    out: recruitment_condition.front
+      .merge(param.rcid)
+      .extend({ count: posInt })
+      .array(),
+  },
+  '/recruit/condition/c': {
+    in: recruitment_condition.front.merge(param.rid),
+  },
+  '/recruit/condition/u': {
+    in: recruitment_condition.front.partial().merge(param.rcid),
+  },
+  '/recruit/condition/d': {
+    in: param.rcid,
+  },
+  '/recruit/condition/ptc/ls': {
+    in: param.page.merge(param.rcid),
     out: recruitment_participant.front.array(),
   },
-  '/recruit/ptc/c': {
-    in: param.rtype.merge(param.uid),
+  '/recruit/condition/ptc/d': {
+    in: param.rcid.merge(param.uid),
   },
-  '/recruit/ptc/d': {
-    in: param.rtype.merge(param.uid),
-  },
-  /**更改日程 */
-  // 'event': {
-  //   in: param.uid
-  //     .merge(param.rtype)
-  //     .extend({ starts: shared.timestamp.array() }),
-  // },
 } satisfies RawApiRecords;
 const msg = {
   '/msg/stream': {
     meta: { type: 'ws', token: '' }, // debug only
     out: message.front,
   },
-  '/msg/list': {
+  '/msg/ls': {
     in: param.page,
     out: message.front.array(),
   },

@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import { env, Onion } from 'shared';
 import { a_json, b_json, devPort } from 'shared/router';
 import WebSocket from 'ws';
-import { catcher, convert, cors, logger, middleAdaptor } from './middle';
+import { catcher, convert, logger, middleAdaptor } from './middle';
 import { routerMiddle } from './router';
 import { createContext, log } from './util';
 
@@ -15,7 +15,7 @@ const sharedHandler = new Onion<Context>()
   .use(routerMiddle)
   .compose();
 const httpHandler = new Onion<HttpContext>()
-  .use(cors)
+  // .use(cors)
   .use(middleAdaptor(helmet()))
   .use(sharedHandler)
   .compose();
