@@ -1,30 +1,44 @@
 import { mdiAccountPlusOutline } from '@mdi/js';
+import { computed, effect } from '@vue/reactivity';
 import { ExperimentType, Role } from 'shared/data';
-import { computed, defineComponent } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VChip } from 'vuetify/components/VChip';
 import { VMain } from 'vuetify/components/VMain';
 import { ExperimentDetail, ExperimentFilter } from '~/components/experiment';
 import { Table, type TableHeader } from '~/components/table';
-import { c } from '~/ts//client';
-import { useExperimentData } from '~/ts/hook';
+import { useRequest } from '~/ts//client';
+import { useExperimentList } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
 import { definePageComponent } from '~/ts/util';
 
-const {
-  exp,
-  fetchList: fetchExpList,
-  filter,
-  fetchRange: fetchExpRange,
-  search,
-} = useExperimentData('public');
+export const route: LooseRouteRecord = {
+  meta: {
+    nav: {
+      tip: '报名',
+      icon: mdiAccountPlusOutline,
+      order: 2,
+    },
+    need: {
+      login: false,
+      role: Role.Participant.value,
+    },
+  },
+};
+const list = useExperimentList('public');
+const joinRequest = useRequest(
+  '/exp/join',
+  { rcid: '' },
+  {
+    0(res) {
+      snackbar.show({ text: '报名成功', color: 'success' });
+    },
+  },
+);
 
-const _Table = defineComponent(() => {
-  const { mobile, xs } = useDisplay();
-  const mobileHeaders: TableHeader<
-    FTables['experiment']['public']['preview']
-  >[] = [
+function useTableHeaders() {
+  const { xs } = useDisplay();
+  const mobileHeaders: TableHeader<FTables['experiment']['public']>[] = [
     { title: '标题', key: 'title', maxWidth: '20rem' },
     {
       title: '类型',
@@ -56,7 +70,7 @@ const _Table = defineComponent(() => {
     //   sort: (a, b) => a.key - b.key,
     // },
   ];
-  const headers = computed(() =>
+  return computed(() =>
     xs.value
       ? mobileHeaders
       : mobileHeaders.concat([
@@ -74,76 +88,56 @@ const _Table = defineComponent(() => {
           },
         ]),
   );
-  return () => (
-    <Table
-      class={mobile.value ? 'w-100' : 'w-50'}
-      v-model={exp.selected}
-      items={exp.list}
-      headers={headers.value}
-      slots={{
-        toolbar: () => (
-          <ExperimentFilter
-            model={filter.data}
-            range={filter.range}
-            onSearch={search}
-          />
-        ),
-        noData: () => '当前区域没有项目',
-      }}
-    />
-  );
-});
-const join = () => {
-  if (!exp.selected)
-    return snackbar.show({ text: '请先选择项目', color: 'error' });
-  c['/exp/join'].send(
-    { eid: exp.selected.eid, rtype: filter.data.rtype },
-    {
-      0(res) {
-        snackbar.show({ text: '报名成功', color: 'success' });
-      },
-    },
-  );
-};
-
-export const route: LooseRouteRecord = {
-  meta: {
-    nav: {
-      tip: '报名',
-      icon: mdiAccountPlusOutline,
-      order: 2,
-    },
-    need: {
-      login: false,
-      role: Role.Participant.value,
-    },
-  },
-};
+}
 export default definePageComponent(
   import.meta.url,
-  () => () => (
-    <VMain class="d-flex h-100">
-      <_Table />
-      <ExperimentDetail
-        experiment={exp.selected}
-        recuitment={void 0}
-        readonly
-        slots={{
-          append: () => [
-            <VBtn
-              text="报名"
-              prependIcon={mdiAccountPlusOutline}
-              variant="outlined"
-              onClick={join}
-            />,
-          ],
-        }}
-      />
-    </VMain>
-  ),
+  () => {
+    const { mobile } = useDisplay();
+    const headers = useTableHeaders();
+    return () => (
+      <VMain class="d-flex h-100">
+        <Table
+          class={mobile.value ? 'w-100' : 'w-50'}
+          v-model={list.current}
+          items={list.items}
+          headers={headers.value}
+          page={list.request.input}
+          loading={list.request.loading}
+          slots={{
+            toolbar: () => (
+              <ExperimentFilter
+                v-model={list.request.input}
+                range={list.filter.range}
+              />
+            ),
+            noData: () => '当前区域没有项目',
+          }}
+        />
+        <ExperimentDetail
+          experiment={list.current}
+          readonly
+          slots={{
+            append: () => [
+              <VBtn
+                text="报名"
+                prependIcon={mdiAccountPlusOutline}
+                variant="outlined"
+                loading={joinRequest.loading}
+                onClick={() => {
+                  //FIXME
+                  joinRequest.input.rcid = '';
+                }}
+              />,
+            ],
+          }}
+        />
+      </VMain>
+    );
+  },
   {
-    beforeRouteEnter(to, from, next) {
-      Promise.allSettled([fetchExpList(), fetchExpRange()]).finally(next);
+    beforeRouteEnter(to, from) {
+      list.filter.request?.fetch();
+      list.request.fetch();
     },
   },
 );

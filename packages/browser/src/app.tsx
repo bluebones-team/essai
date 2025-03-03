@@ -17,7 +17,6 @@ import { VSpacer } from 'vuetify/components/VGrid';
 import { VIcon } from 'vuetify/components/VIcon';
 import { VLayout } from 'vuetify/components/VLayout';
 import { VNavigationDrawer } from 'vuetify/components/VNavigationDrawer';
-import { VProgressLinear } from 'vuetify/components/VProgressLinear';
 import { VTab, VTabs } from 'vuetify/components/VTabs';
 import {
   VSlideXReverseTransition,
@@ -26,13 +25,7 @@ import {
 } from 'vuetify/components/transitions';
 import { Tooltip } from 'vuetify/directives';
 import { Pic } from '~/components/pic';
-import {
-  messages,
-  setting,
-  showProgressbar,
-  snackbar,
-  udata,
-} from '~/ts/state';
+import { messages, setting, snackbar, udata } from '~/ts/state';
 import { useTheme } from './ts/hook';
 
 type NavTabProps = Props<typeof NavTab>;
@@ -183,9 +176,8 @@ export const App = defineComponent(() => {
       theme={theme.app}
       // onContextmenu={(e) => e.preventDefault()}
     >
-      <snackbar.Comp />
-      <VProgressLinear active={showProgressbar.value} indeterminate absolute />
       <VLayout>
+        <snackbar.Comp />
         {mobile.value ? <NavigationBottom /> : <NavigationDrawer />}
         <RouterPage />
       </VLayout>

@@ -1,5 +1,5 @@
 import { z } from 'zod'; /**@see https://zod.dev/ */
-import { difference, mapValues } from '..';
+import { difference } from '..';
 import {
   ExperimentState,
   ExperimentType,
@@ -69,16 +69,6 @@ function enums<const T extends number>(
       .meta({ items: obj.items })
   );
 }
-function diff<const U extends {}, const T extends U>(
-  target: z.ZodObject<T>,
-  source: z.ZodObject<U>,
-) {
-  //@ts-ignore
-  return target.omit<{ [k in keyof U]: true }>(
-    mapValues(source.shape, (v, k) => true),
-  );
-}
-
 //@ts-ignore
 export function output<T extends z.ZodType = z.ZodAny>(data: T = z.any()) {
   const dataEnums = [OutputCode.Success.value];
@@ -229,42 +219,15 @@ export const recruitment = (function () {
   };
 })();
 export const experiment = (function () {
-  const _public = (function () {
-    const preview = z.object({
-      eid: uuid.meta({ primaryKey: true }),
-      type: enums(ExperimentType).meta({ text: '实验类型' }),
-      title: max20Str.min(1).meta({ text: '实验名称' }),
-      position: shared.position.meta({ text: '实验室位置' }),
-    });
-    const supply = z.object({
-      uid: uuid.meta({ references: 'user.uid' }),
-      notice: max100Str.meta({ type: 'textarea', text: '实验须知' }),
-      // events: z.tuple([shared.timestamp, shared.timestamp]).array().min(1),
-    });
-    const data = preview.merge(supply);
-    // const schedule = param.rtype.extend({
-    //   eid: uuid.meta({ references: 'experiment.eid' }),
-    //   start: shared.timestamp,
-    //   end: shared.timestamp,
-    // });
-    return { preview, supply, data };
-  })();
-  const joined = (function () {
-    const preview = _public.preview;
-    const data = _public.data;
-    const supply = diff(data, preview);
-    // const schedule = _public.schedule;
-    return { preview, supply, data };
-  })();
-  const own = (function () {
-    const preview = _public.data
-      .extend({ state: enums(ExperimentState) })
-      .omit({ position: true });
-    const data = _public.data.extend({ state: enums(ExperimentState) });
-    const supply = diff(data, preview);
-    // const schedule = joined.schedule.extend({ uids: posInt.array() });
-    return { preview, supply, data };
-  })();
+  const _public = z.object({
+    eid: uuid.meta({ primaryKey: true }),
+    type: enums(ExperimentType).meta({ text: '实验类型' }),
+    title: max20Str.min(1).meta({ text: '实验名称' }),
+    position: shared.position.meta({ text: '实验室位置' }),
+    notice: max100Str.meta({ type: 'textarea', text: '实验须知' }),
+  });
+  const joined = _public;
+  const own = _public.extend({ state: enums(ExperimentState) });
   const filter = (function () {
     const times = posInt.max(100);
     const range = z.object({
@@ -281,7 +244,7 @@ export const experiment = (function () {
     return {
       range,
       data: range
-        .merge(own.data.pick({ type: true, state: true }))
+        .merge(own.pick({ type: true, state: true }))
         .extend({
           search: max20Str.meta({ text: '搜索文本' }),
           // command: z.string().meta({form:{ text: '搜索指令' }}),
@@ -292,10 +255,13 @@ export const experiment = (function () {
   })();
   return {
     front: { public: _public, joined, own, filter },
-    back: own.data.extend({ created_at: shared.timestamp }),
+    back: own.extend({
+      uid: uuid.meta({ references: 'user.uid' }),
+      created_at: shared.timestamp,
+    }),
   };
 })();
-export type ExperimentFrontDataType = Exclude<
+export type ExperimentFrontType = Exclude<
   keyof typeof experiment.front,
   'filter'
 >;

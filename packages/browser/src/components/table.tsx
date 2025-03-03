@@ -18,7 +18,7 @@ import { pickModel } from '~/ts/util';
 
 export type TableHeader<T> = {
   title: string;
-  key: keyof T & string;
+  key: keyof T | '';
   value?: (item: T) => string | number | VNode;
   cellProps?: TdHTMLAttributes;
   [x: string]: any;
@@ -65,7 +65,7 @@ export const Table = defineComponent(function <
         >
           {p.groupBy && <td></td>}
           {p.headers.map(({ value, key, cellProps }) => (
-            <td {...cellProps}>{value?.(item) ?? item[key] + ''}</td>
+            <td {...cellProps}>{value?.(item) ?? (key && item[key])}</td>
           ))}
         </tr>,
         [[Ripple, true]],

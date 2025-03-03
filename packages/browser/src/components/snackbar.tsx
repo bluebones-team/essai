@@ -23,7 +23,7 @@ export const SnackbarQueue = defineComponent(
             setTimeout(() => {
               item.pos = 0;
               if (--shownNum === 0) {
-                queue.clear();
+                queue.set([]);
                 p['onUpdate:modelValue']?.(false);
               }
             }, 1e2);

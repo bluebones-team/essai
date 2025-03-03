@@ -21,6 +21,7 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@vue/reactivity": "^3.5.13",
     "zod": "^3.23.8"
   },
   "lint-staged": {

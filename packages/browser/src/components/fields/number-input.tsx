@@ -1,12 +1,12 @@
-import { defineComponent, useModel } from 'vue';
+import { defineComponent } from 'vue';
 import { VTextField } from 'vuetify/components/VTextField';
-import { checkModel } from '~/ts/util';
+import { useModel } from '~/ts/hook';
 
 export const NumberInput = defineComponent(function (p: {
   modelValue?: number;
   'onUpdate:modelValue'?: (value: number) => void;
 }) {
-  const model = useModel(checkModel(p), 'modelValue', {
+  const model = useModel(p, 'modelValue', {
     get: (v) => '' + v,
     set: (v) => +v,
   });

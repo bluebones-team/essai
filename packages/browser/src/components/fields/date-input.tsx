@@ -1,14 +1,13 @@
 import { date2ts, ts2date } from 'shared/data';
-import { defineComponent, useModel } from 'vue';
+import { defineComponent } from 'vue';
 import { VTextField } from 'vuetify/components/VTextField';
-import { checkModel } from '~/ts/util';
+import { useModel } from '~/ts/hook';
 
-export const DateInput = defineComponent(function (_p: {
+export const DateInput = defineComponent(function (p: {
   modelValue?: Shared['timestamp'];
   'onUpdate:modelValue'?: (value: Shared['timestamp']) => void;
   rules: ((v: unknown) => Promise<true | string>)[];
 }) {
-  const p = checkModel(_p);
   const model = useModel(p, 'modelValue', {
     get: () => '' + ts2date(p.modelValue),
     set: (v) => p['onUpdate:modelValue'](date2ts(v)),

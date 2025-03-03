@@ -87,7 +87,7 @@ export function omit<T extends LooseObject, K extends keyof T>(
   return result as Omit<T, K>;
 }
 /**@example isEqualDeep({a: {b: 1}}, {a: {b: 1}}) // true */
-export function deepIsEqual(
+export function deepEqual(
   a: unknown,
   b: unknown,
   cache: Set<unknown> = new Set(),
@@ -105,7 +105,7 @@ export function deepIsEqual(
     const bKeys = Object.keys(b);
     if (aKeys.length !== bKeys.length) return false;
     for (const key of aKeys) {
-      if (!deepIsEqual(a[key], b[key], cache)) return false;
+      if (!deepEqual(a[key], b[key], cache)) return false;
     }
     return true;
   }

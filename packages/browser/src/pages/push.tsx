@@ -17,18 +17,26 @@ import { VMain } from 'vuetify/components/VMain';
 import { VToolbar } from 'vuetify/components/VToolbar';
 import { Dialog } from '~/components/dialog';
 import { Table } from '~/components/table';
-import { c } from '~/ts/client';
-import { useExperiment, usePopup, useUserParticipant } from '~/ts/hook';
+import { c, useRequest } from '~/ts/client';
+import { useExperimentList, useFetchList, usePopup } from '~/ts/hook';
 import { snackbar } from '~/ts/state';
 import { definePageComponent } from '~/ts/util';
 
-const { state: exp, fetchList: fetchExpList } = useExperiment('own');
-const { state: ptc, fetchList: fetchPtcList } = useUserParticipant();
+const list = useExperimentList('own');
+const ptcList = useFetchList(
+  '/usr/ptc/ls',
+  {
+    rtype: RecruitmentType.Subject.value,
+    ps: 20,
+    pn: 1,
+  },
+  true,
+);
 
 const _Table = () => (
   <Table
-    v-model={exp.selected}
-    items={exp.list}
+    v-model={list.current}
+    items={list.items}
     headers={[
       { title: '名称', key: 'title' },
       {
@@ -47,12 +55,21 @@ const _Table = () => (
     }}
   />
 );
-const _LibTable = defineComponent(() => {
+const _PtcTable = defineComponent(() => {
   const { mobile } = useDisplay();
+  const deletePtcRequest = useRequest(
+    '/usr/ptc/d',
+    { uid: '', rtype: ptcList.request.input.rtype },
+    {
+      0(res) {
+        ptcList.remove({ uid: deletePtcRequest.input.uid });
+      },
+    },
+  );
   return () => (
     <Table
-      v-model={ptc.selected}
-      items={ptc.list}
+      v-model={ptcList.current}
+      items={ptcList.items}
       multiple
       headers={[
         // {
@@ -73,7 +90,7 @@ const _LibTable = defineComponent(() => {
         },
         {
           title: '操作',
-          key: '' as any,
+          key: '',
           width: '4rem',
           sortable: false,
           value: (item) => (
@@ -81,16 +98,10 @@ const _LibTable = defineComponent(() => {
               icon={mdiDeleteOutline}
               color="error"
               variant="text"
+              loading={deletePtcRequest.loading}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
-                c['/usr/ptc/d'].send(
-                  { rtype: ptc.rtype, uid: item.uid },
-                  {
-                    0(res) {
-                      ptc.list.splice(ptc.list.indexOf(item), 1);
-                    },
-                  },
-                );
+                deletePtcRequest.input.uid = item.uid;
               }}
             ></VBtn>
           ),
@@ -102,8 +113,7 @@ const _LibTable = defineComponent(() => {
             <VBtn icon={mdiArrowLeft} onClick={lib_dialog.close} />
           ),
           <VBtnToggle
-            v-model={ptc.rtype}
-            onUpdate:modelValue={fetchPtcList}
+            v-model={ptcList.request.input.rtype}
             class="bg-surface mx-auto"
             density="compact"
             variant="outlined"
@@ -128,19 +138,19 @@ const _LibFab = () => (
     absolute
     app
     onClick={() => {
-      if (!exp.selected) return snackbar.show({ text: '请选择要推送的项目' });
-      if (!ptc.selected.length)
+      if (!list.current) return snackbar.show({ text: '请选择要推送的项目' });
+      if (!ptcList.current.length)
         return snackbar.show({ text: '请选择要推送的参与者' });
       c['/exp/push'].send(
         {
-          eid: exp.selected.eid,
-          rtype: ptc.rtype,
-          uids: ptc.selected.map((e) => e.uid),
+          //FIXME
+          rcid: '',
+          uids: ptcList.current.map((e) => e.uid),
         },
         {
           0(res) {
             snackbar.show({
-              text: `${exp.selected?.title} 推送成功`,
+              text: `${list.current?.title} 推送成功`,
               color: 'success',
             });
           },
@@ -151,14 +161,14 @@ const _LibFab = () => (
 );
 const _Lib = () => (
   <div class="position-relative h-100">
-    <_LibTable />
+    <_PtcTable />
     <_LibFab />
   </div>
 );
 
 const lib_dialog = usePopup(Dialog, () => ({ content: _Lib }));
 watchEffect(() => {
-  if (exp.selected) lib_dialog.show();
+  if (list.current) lib_dialog.show();
 });
 
 export const route: LooseRouteRecord = {
@@ -186,14 +196,9 @@ export default definePageComponent(
     );
   },
   {
-    beforeRouteEnter(to, from, next) {
-      Promise.allSettled([
-        fetchExpList({
-          state: ExperimentState.Passed.value,
-          rtype: RecruitmentType.Subject.value,
-        }),
-        fetchPtcList(),
-      ]).finally(next);
+    beforeRouteEnter(to, from) {
+      list.request.fetch({ state: ExperimentState.Passed.value });
+      ptcList.request.fetch();
     },
   },
 );

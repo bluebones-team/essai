@@ -20,20 +20,10 @@ export function createDefaultPropertyProxy<T>(getDefaultValue: () => T) {
     },
   });
 }
-function getModelKeys<T extends string = 'modelValue'>(key?: T) {
+export function getModelKeys<T extends string = 'modelValue'>(key?: T) {
   key = key ?? ('modelValue' as T);
   const keys = [key, `onUpdate:${key}`] as const;
   return keys as NonReadonly<typeof keys>;
-}
-export function checkModel<
-  T extends LooseObject,
-  K extends string & keyof T = 'modelValue',
->(props: T, key?: K) {
-  const keys = getModelKeys(key);
-  for (const k of keys) {
-    typeof props[k] === 'undefined' && error(`Missing required prop: ${k}`);
-  }
-  return props as RequiredByKey<T, (typeof keys)[number]>;
 }
 export function pickModel<
   T extends LooseObject,

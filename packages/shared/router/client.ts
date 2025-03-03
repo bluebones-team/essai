@@ -1,4 +1,5 @@
-import { type Middle } from '..';
+import { reactive, watch } from '@vue/reactivity';
+import { error, type Middle } from '..';
 import { OutputCode, type ExtractOutput } from '../data';
 import {
   apiRecords,
@@ -9,8 +10,8 @@ import {
 } from './api';
 import {
   batch_sender,
-  json_encoder,
   json_decoder,
+  json_encoder,
   zod_checker,
 } from './middle';
 import { Client } from './rpc';
@@ -27,6 +28,17 @@ declare module './rpc' {
     }
   }
 }
+
+function createContext<P extends keyof ApiRecords>(
+  path: P,
+  input: In[P],
+  codeCbs: CodeCallbacks<Out[P]> = {},
+): Client.LeastContext {
+  const api = apiRecords[path];
+  if (!api) return error(`invalid path: ${path}`);
+  //@ts-ignore
+  return { path, input, api: apiRecords[path], codeCbs };
+}
 export function createClient(opts: {
   sender(ctx: Client.Context): void;
   error(msg: string, ...e: any): void;
@@ -34,6 +46,31 @@ export function createClient(opts: {
 }) {
   const client = new Client();
   client.in
+    .use(function initCtx(ctx, next) {
+      if (!ctx.api) return opts.error(`invalid path: ${ctx.path}`);
+      ctx.codeCbs = {
+        [OutputCode.Fail.value]: (res) =>
+          opts.error(`${OutputCode[res.code].name} ${res.msg}`),
+        [OutputCode.Unauthorizen.value]() {
+          client.send(
+            createContext('/token/refresh', void 0, {
+              [OutputCode.Success.value](res) {
+                opts.setToken(res.data);
+                opts.sender(client.createContext(ctx));
+              },
+              [OutputCode.Unauthorizen.value]() {
+                opts.error('请重新登录');
+              },
+            }),
+          );
+        },
+        [OutputCode.ServerError.value]({ msg }) {
+          opts.error(msg);
+        },
+        ...ctx.codeCbs,
+      };
+      return next();
+    })
     .use(
       zod_checker({
         type: 'in',
@@ -46,7 +83,7 @@ export function createClient(opts: {
         ms: 2e2,
         send({ path, input, codeCbs, outMiddle }) {
           client.out.with(outMiddle);
-          new ProxyClient(path).send(input, codeCbs);
+          client.send(createContext(path, input, codeCbs));
         },
         ignore: (ctx) => ctx.api.meta.type === 'ws',
       }),
@@ -72,51 +109,55 @@ export function createClient(opts: {
         : opts.error(`no codeCbs: ${ctx.path}:${ctx.output.code}`);
     });
   class ProxyClient<P extends keyof ApiRecords> {
-    constructor(public path: P) {
-      this.path = path;
-    }
+    constructor(public path: P) {}
     with(middle: Middle<Client.Context>) {
       client.in.with(middle);
       return this;
     }
     send(input: In[P], codeCbs: CodeCallbacks<Out[P]> = {}) {
-      const path = this.path;
-      const api = apiRecords[path];
-      if (!api) return opts.error(`invalid path: ${path}`);
-      //@ts-ignore
-      const ctx: Client.LeastContext = {
-        path,
-        input,
-        api,
-        codeCbs: {
-          [OutputCode.Fail.value]: (res) =>
-            opts.error(`${OutputCode[res.code].name} ${res.msg}`),
-          [OutputCode.Unauthorizen.value]() {
-            new ProxyClient('/token/refresh').send(void 0, {
-              [OutputCode.Success.value](res) {
-                opts.setToken(res.data);
-                opts.sender(client.createContext(ctx));
-              },
-              [OutputCode.Unauthorizen.value]() {
-                opts.error('请重新登录');
-              },
-            });
-          },
-          [OutputCode.ServerError.value]({ msg }) {
-            opts.error(msg);
-          },
-          ...codeCbs,
-        },
-        onError(err) {
-          opts.error(`${path}.onError: ${err}`, err);
-        },
-      };
-      return client.send(ctx);
+      const ctx = createContext(this.path, input, codeCbs);
+      return ctx && client.send(ctx);
     }
   }
-  return new Proxy({} as { [P in keyof ApiRecords]: ProxyClient<P> }, {
+  function useRequest<P extends keyof ApiRecords>(
+    path: P,
+    input: In[P],
+    codeCbs: Partial<CodeCallbacks<Out[P]>> = {},
+  ) {
+    const store = reactive({
+      loading: false,
+      /**request data, change it will trigger fetch */
+      input,
+      /**response data */
+      output: void 0 as Out[P] | undefined,
+      /**force fetch */
+      fetch(extra: Partial<In[P]> = {}) {
+        if (Object.keys(extra).length) {
+          Object.assign(store.input, extra);
+        } else {
+          fetch();
+        }
+      },
+    });
+    function fetch() {
+      client.in.with((ctx, next) => ((store.loading = true), next()));
+      client.out.with((ctx, next) => ((store.loading = false), next()));
+      client.send(
+        createContext(path, store.input, {
+          [OutputCode.Success.value](res) {
+            store.output = res.data;
+          },
+          ...codeCbs,
+        }),
+      );
+    }
+    watch(store.input, fetch, { deep: true });
+    return store;
+  }
+  const c = new Proxy({} as { [P in keyof ApiRecords]: ProxyClient<P> }, {
     get: (_, path: Path) => new ProxyClient(path),
   });
+  return { client, c, useRequest };
 }
 
 // middlewares

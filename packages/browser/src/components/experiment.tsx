@@ -3,26 +3,27 @@ import {
   experiment,
   recruitment,
   recruitment_condition,
-  type ExperimentFrontDataType,
+  type ExperimentFrontType,
 } from 'shared/data';
 import { defineComponent, watchEffect } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VToolbar } from 'vuetify/components';
+import { VBtn } from 'vuetify/components/VBtn';
 import { VIcon } from 'vuetify/components/VIcon';
 import { VTextField } from 'vuetify/components/VTextField';
-import { useCombinedBoolean, usePopup } from '~/ts/hook';
+import { useCloned, useCombinedBoolean, useModel, usePopup } from '~/ts/hook';
 import { Dialog } from './dialog';
 import { Form } from './form';
-import { VBtn } from 'vuetify/components/VBtn';
+import { effect, watch } from '@vue/reactivity';
 
 export const Experiment = defineComponent(function (p: {
-  model: FTables['experiment'][ExperimentFrontDataType]['data'];
+  model: FTables['experiment'][ExperimentFrontType];
 }) {
   const { xs } = useDisplay();
   return () => (
     <Form
       model={p.model}
-      schema={experiment.front.public.data}
+      schema={experiment.front.public}
       layout={(comps) => [
         [
           { comp: comps.title, cols: () => (xs.value ? 12 : 6) },
@@ -34,50 +35,59 @@ export const Experiment = defineComponent(function (p: {
     />
   );
 });
+type Filter = FTables['experiment']['filter'];
 export const ExperimentFilter = defineComponent(function (p: {
-  model: FTables['experiment']['filter']['data'];
-  range: FTables['experiment']['filter']['range'];
-  onSearch(): void;
+  range: Filter['range'];
+  modelValue?: Filter['data'];
+  'onUpdate:modelValue'?(value: Filter['data']): void;
 }) {
+  effect(() => {
+    console.log(p.modelValue?.duration_range, p.range.duration_range);
+  });
+
   const { xs } = useDisplay();
-  const FilterForm = () => (
-    <Form
-      model={p.model}
-      schema={experiment.front.filter.data}
-      layout={(comps) => [
-        [{ comp: () => <comps.search clearable autofocus /> }],
-        [
-          {
-            cols: () => (xs.value ? 12 : 6),
-            comp: () => <comps.type clearable />,
-          },
-          { comp: comps.rtype },
-        ],
-        [{ comp: () => <comps.fee_range range={p.range.fee_range} /> }],
-        [{ comp: () => <comps.times_range range={p.range.times_range} /> }],
-        [
-          {
-            comp: () => <comps.duration_range range={p.range.duration_range} />,
-          },
-        ],
-      ]}
-    />
-  );
+  const model = useModel(p);
+  const { cloned, sync, reset } = useCloned(model);
+  const FilterForm = defineComponent(function (p: {
+    model: Filter['data'];
+    range: Filter['range'];
+  }) {
+    return () => (
+      <Form
+        model={p.model}
+        schema={experiment.front.filter.data}
+        layout={(comps) => [
+          [{ comp: () => <comps.search clearable autofocus /> }],
+          [
+            {
+              cols: () => (xs.value ? 12 : 6),
+              comp: () => <comps.type clearable />,
+            },
+            { comp: comps.rtype },
+          ],
+          [{ comp: () => <comps.fee_range range={p.range.fee_range} /> }],
+          [{ comp: () => <comps.times_range range={p.range.times_range} /> }],
+          [
+            {
+              comp: () => (
+                <comps.duration_range range={p.range.duration_range} />
+              ),
+            },
+          ],
+        ]}
+      />
+    );
+  });
   const dialog = usePopup(Dialog, () => ({
-    content: FilterForm,
+    content: () => <FilterForm model={cloned.value} range={p.range} />,
     btns: [
-      {
-        text: '取消',
-        variant: 'outlined',
-        onClick() {
-          dialog.close();
-        },
-      },
+      { text: '重置', variant: 'outlined', onClick: reset },
+      { text: '取消', variant: 'outlined', onClick: () => dialog.close() },
       {
         text: '确认',
         variant: 'flat',
         onClick() {
-          p.onSearch();
+          sync();
           dialog.close();
         },
       },
@@ -87,17 +97,17 @@ export const ExperimentFilter = defineComponent(function (p: {
     <>
       <dialog.Comp />
       <VTextField
-        v-model={p.model.search}
+        v-model={model.value.search}
         type="search"
         class="mx-4 w-100"
         variant="solo"
         placeholder="搜索"
         hideDetails
-        onKeydown={(e: KeyboardEvent) => e.key === 'Enter' && p.onSearch()}
+        onKeydown={(e: KeyboardEvent) => e.key === 'Enter' && sync()}
         v-slots={{
           'append-inner': () => [
             <VIcon class="mr-2" icon={mdiTune} onClick={() => dialog.show()} />,
-            <VIcon icon={mdiMagnify} onClick={p.onSearch} />,
+            <VIcon icon={mdiMagnify} onClick={sync} />,
           ],
         }}
       />
@@ -131,8 +141,8 @@ export const RecruitmentCondition = defineComponent(function (p: {
   );
 });
 export const ExperimentDetail = defineComponent(function (p: {
-  experiment?: FTables['experiment'][ExperimentFrontDataType]['data'];
-  recuitment?: FTables['recruitment'];
+  experiment?: FTables['experiment'][ExperimentFrontType];
+  recruitments?: FTables['recruitment'][];
   slots?: Slots<VToolbar>;
   readonly?: boolean;
   modelValue?: boolean | null;
@@ -159,13 +169,9 @@ export const ExperimentDetail = defineComponent(function (p: {
           model={p.experiment}
         />
       ) : null}
-      {p.recuitment ? (
-        <Recruitment
-          v-model={states[1]}
-          readonly={p.readonly}
-          model={p.recuitment}
-        />
-      ) : null}
+      {p.recruitments?.map((e) => (
+        <Recruitment v-model={states[1]} model={e} readonly={p.readonly} />
+      ))}
     </div>
   );
   const dialog = usePopup(Dialog, () => ({ content: Detail }));

@@ -39,7 +39,7 @@ export default definePageComponent(import.meta.url, function () {
     <VMain class="h-100 overflow-auto" style="word-break: break-all">
       <div class="mx-4 py-16 text-center">
         <h1 class="text-h2 font-weight-black mt-16 mb-6">线下实验招募平台</h1>
-        <p class="text-h6 mx-auto" style="max-width: 800px">
+        <p class="text-h6 mx-auto" style="max-width: 80rem">
           这里是蓝骨头工作流的起点，欢迎加入我们的团队！
         </p>
         <div class="my-8 d-flex flex-wrap justify-center ga-6">

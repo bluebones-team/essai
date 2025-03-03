@@ -8,6 +8,20 @@ type ApiContext<P extends keyof T = keyof T> = {
   input: T[P]['in'];
   output: T[P]['out'];
 };
+class TempOnion<T extends {}> extends Onion<T, 'with'> {
+  tempMiddles: Middle<T>[] = [];
+  /**add temporary middle */
+  with(middle: Middle<T>) {
+    this.tempMiddles.push(middle);
+    return this;
+  }
+  compose() {
+    const middles = [...this.middles];
+    middles.splice(this.markers.with ?? middles.length, 0, ...this.tempMiddles);
+    this.tempMiddles.length = 0;
+    return new Onion(middles).compose();
+  }
+}
 
 export declare namespace Client {
   type ExtraContext<P extends keyof T = keyof T> = {
@@ -23,22 +37,8 @@ export declare namespace Client {
   >;
 }
 export class Client {
-  static Flow = class extends Onion<Client.Context, 'with'> {
-    _middles: Middle<Client.Context>[] = [];
-    /**add temporary middle */
-    with(middle: Middle<Client.Context>) {
-      this._middles.push(middle);
-      return this;
-    }
-    compose() {
-      const middles = [...this.middles];
-      middles.splice(this.markers.with ?? middles.length, 0, ...this._middles);
-      this._middles.length = 0;
-      return new Onion(middles).compose();
-    }
-  };
-  in = new Client.Flow();
-  out = new Client.Flow();
+  in = new TempOnion<Client.Context>();
+  out = new TempOnion<Client.Context>();
   createContext<P extends keyof T = keyof T>(ctx: Client.LeastContext<P>) {
     const _ctx = ctx as unknown as Client.Context;
     _ctx.onData ??= (() => {

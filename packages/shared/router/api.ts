@@ -41,57 +41,6 @@ const defaultApiRecord = {
   out: z.undefined(),
 } satisfies ApiRecord;
 
-function crud<
-  T extends string,
-  U extends z.ZodRawShape,
-  L extends keyof U,
-  R extends keyof U,
->(
-  path: T,
-  schema: z.ZodObject<U>,
-  opts: { id: Record<L, true>; readonly: Record<R, true> },
-) {
-  const id = schema.pick(opts.id as {}) as z.ZodObject<Pick<U, L>>;
-  const editable = schema
-    .omit(opts.id as {})
-    .omit(opts.readonly as {}) as z.ZodObject<Omit<U, L | R>>;
-  const kvs = [
-    [
-      `${path}/c`,
-      {
-        in: editable,
-      },
-    ],
-    [
-      `${path}/u`,
-      {
-        in: editable.partial().merge(id),
-      },
-    ],
-    [
-      `${path}/d`,
-      {
-        in: id,
-      },
-    ],
-    // [
-    //   `${path}/r`,
-    //   {
-    //     in: id,
-    //     out: schema,
-    //   },
-    // ],
-    // [
-    //   `${path}/r/ls`,
-    //   {
-    //     in: param.page,
-    //     out: schema.array(),
-    //   },
-    // ],
-  ] as const;
-  return Object.fromEntries(kvs) as FromEntries<DeepNonReadonly<typeof kvs>>;
-}
-
 const account = {
   '/token/refresh': {
     meta: { type: 'post', token: 'refresh' },
@@ -163,9 +112,7 @@ const usr = {
   },
   /**参与者库 */
   '/usr/ptc/ls': {
-    in: param.page.extend({
-      filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
-    }),
+    in: param.rtype.merge(param.page),
     out: user_participant.front.array(),
   },
   '/usr/ptc/c': {
@@ -176,10 +123,19 @@ const usr = {
   },
 } satisfies RawApiRecords;
 const exp = {
-  ...crud('/exp', experiment.front.own.data, {
-    id: { eid: true },
-    readonly: { state: true, uid: true },
-  }),
+  '/exp/c': {
+    in: experiment.front.own.omit({ eid: true, state: true }),
+    out: param.eid,
+  },
+  '/exp/u': {
+    in: experiment.front.own
+      .omit({ eid: true, state: true })
+      .partial()
+      .merge(param.eid),
+  },
+  '/exp/d': {
+    in: param.eid,
+  },
   '/exp/pub': {
     in: param.eid,
   },
@@ -195,59 +151,39 @@ const exp = {
   '/exp/public': {
     meta: { type: 'post', token: '' },
     in: param.eid,
-    out: experiment.front.public.data,
-  },
-  '/exp/public/sup': {
-    meta: { type: 'post', token: '' },
-    in: param.eid,
-    out: experiment.front.public.supply,
+    out: experiment.front.public,
   },
   '/exp/public/ls': {
     meta: { type: 'post', token: '' },
-    in: param.page.extend({
-      filter: experiment.front.filter.data.omit({ state: true }),
-    }),
-    out: experiment.front.public.preview.array(),
+    in: experiment.front.filter.data.merge(param.page),
+    out: experiment.front.public.array(),
   },
-  /**公开项目范围 */
   '/exp/public/range': {
     out: experiment.front.filter.range,
   },
   /**用户参与的项目 */
   '/exp/joined': {
     in: param.eid,
-    out: experiment.front.joined.data,
-  },
-  '/exp/joined/sup': {
-    in: param.eid,
-    out: experiment.front.joined.supply,
+    out: experiment.front.joined,
   },
   '/exp/joined/ls': {
-    in: param.page.extend({
-      filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
-    }),
-    out: experiment.front.joined.preview.array(),
+    in: experiment.front.filter.data.merge(param.page),
+    out: experiment.front.joined.array(),
   },
   /**用户创建的项目 */
   '/exp/own': {
     in: param.eid,
-    out: experiment.front.own.data,
-  },
-  '/exp/own/sup': {
-    in: param.eid,
-    out: experiment.front.own.supply,
+    out: experiment.front.own,
   },
   '/exp/own/ls': {
-    in: param.page.extend({
-      filter: experiment.front.filter.data.pick({ rtype: true }).optional(),
-    }),
-    out: experiment.front.own.preview.array(),
+    in: experiment.front.filter.data.merge(param.page),
+    out: experiment.front.own.array(),
   },
 } satisfies RawApiRecords;
 const recruit = {
-  '/recruit/ls': {
-    in: param.page.merge(param.eid),
-    out: recruitment.front.merge(param.rid).array(),
+  '/recruit': {
+    in: param.rtype.merge(param.eid),
+    out: recruitment.front.merge(param.rid),
   },
   '/recruit/c': {
     in: recruitment.front.merge(param.eid),

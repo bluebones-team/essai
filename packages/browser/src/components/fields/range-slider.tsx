@@ -1,6 +1,6 @@
-import { defineComponent, useModel } from 'vue';
+import { defineComponent } from 'vue';
 import { VRangeSlider } from 'vuetify/components/VRangeSlider';
-import { checkModel } from '~/ts/util';
+import { useModel } from '~/ts/hook';
 import { NumberInput } from './number-input';
 
 const NumInput = defineComponent(() => () => (
@@ -17,7 +17,7 @@ export const RangeSlider = defineComponent(function (p: {
   'onUpdate:modelValue'?: (value: [number, number]) => void;
   range?: [number, number];
 }) {
-  const model = useModel(checkModel(p), 'modelValue');
+  const model = useModel(p, 'modelValue');
   return () => (
     <VRangeSlider
       v-model={model.value}

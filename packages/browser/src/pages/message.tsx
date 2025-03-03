@@ -18,13 +18,29 @@ import { usePopup } from '~/ts/hook';
 import { messages } from '~/ts/state';
 import { definePageComponent } from '~/ts/util';
 
+export const route: LooseRouteRecord = {
+  meta: {
+    nav: {
+      tip: '消息',
+      icon: mdiBellOutline,
+      order: 6,
+    },
+    need: { login: true },
+  },
+};
 const totalEnum = -1;
-const state = reactive({
-  type: ref<
+const type =
+  ref<
     typeof totalEnum extends MessageType
       ? "totalEnum can't be MessageType"
       : MessageType | typeof totalEnum
-  >(totalEnum),
+  >(totalEnum);
+const typedText = computed(() =>
+  type.value === totalEnum ? '所有消息' : MessageType[type.value].text,
+);
+const state = reactive({
+  type,
+  typedText,
   message: ref<FTables['message']>(),
 });
 
@@ -32,7 +48,6 @@ const _Nav = defineComponent(() => {
   const { mobile } = useDisplay();
   const showNav = ref(!mobile.value);
   watchEffect(() => {
-    state.type;
     if (mobile.value) showNav.value = false;
   });
   const navItems = [
@@ -53,17 +68,11 @@ const _Nav = defineComponent(() => {
   return () => [
     mobile.value && (
       <VAppBar
-        title={
-          state.type === totalEnum ? '所有消息' : MessageType[state.type].text
-        }
+        title={state.typedText}
         icon
         v-slots={{
           prepend: () => (
-            <VAppBarNavIcon
-              onClick={() => {
-                showNav.value = !showNav.value;
-              }}
-            />
+            <VAppBarNavIcon onClick={() => (showNav.value = !showNav.value)} />
           ),
         }}
       />
@@ -159,17 +168,6 @@ const detail_dialog = usePopup(Dialog, () => ({ content: _Detail }));
 watchEffect(() => {
   if (state.message) detail_dialog.show();
 });
-
-export const route: LooseRouteRecord = {
-  meta: {
-    nav: {
-      tip: '消息',
-      icon: mdiBellOutline,
-      order: 6,
-    },
-    need: { login: true },
-  },
-};
 export default definePageComponent(import.meta.url, () => {
   const { mobile } = useDisplay();
   return () => (

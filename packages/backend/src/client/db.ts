@@ -50,7 +50,7 @@ Object.assign(createSelectQueryBuilder(null).constructor.prototype, {
       if (data.duration_range) {
         query = query.where((eb) =>
           eb.between(
-            sql<number>`SELECR sum(v) FROM unnsert(${sql.ref('recruitment.durations')}) as v`,
+            sql<number>`(SELECT sum(v) FROM unnest(${sql.ref('recruitment.durations')}) AS v)`,
             ...data.duration_range!,
           ),
         );

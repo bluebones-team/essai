@@ -1,6 +1,5 @@
 import { mdiRun } from '@mdi/js';
 import { ExperimentType, RecruitmentType, Role } from 'shared/data';
-import { defineComponent } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VBtnToggle } from 'vuetify/components/VBtnToggle';
@@ -8,23 +7,31 @@ import { VChip } from 'vuetify/components/VChip';
 import { VMain } from 'vuetify/components/VMain';
 import { ExperimentDetail } from '~/components/experiment';
 import { Table } from '~/components/table';
-import { useExperimentData } from '~/ts/hook';
+import { useExperimentList } from '~/ts/hook';
 import { definePageComponent } from '~/ts/util';
 
-const {
-  exp,
-  fetchList: fetchExpList,
-  filter,
-  search,
-} = useExperimentData('joined');
-
+export const route: LooseRouteRecord = {
+  meta: {
+    nav: {
+      tip: '正在参加',
+      icon: mdiRun,
+      order: 3,
+    },
+    need: {
+      login: true,
+      role: Role.Participant.value,
+    },
+  },
+};
+const list = useExperimentList('joined');
 function _Table() {
   const { mobile } = useDisplay();
   return (
     <Table
       class={mobile.value ? 'w-100' : 'w-50'}
-      v-model={exp.selected}
-      items={exp.list}
+      v-model={list.current}
+      items={list.items}
+      loading={list.request.loading}
       headers={[
         {
           title: '名称',
@@ -43,8 +50,7 @@ function _Table() {
       slots={{
         toolbar: () => (
           <VBtnToggle
-            v-model={filter.data.rtype}
-            onUpdate:modelValue={search}
+            v-model={list.request.input.rtype}
             class="mx-auto"
             density="compact"
             variant="outlined"
@@ -61,34 +67,17 @@ function _Table() {
   );
 }
 
-export const route: LooseRouteRecord = {
-  meta: {
-    nav: {
-      tip: '正在参加',
-      icon: mdiRun,
-      order: 3,
-    },
-    need: {
-      login: true,
-      role: Role.Participant.value,
-    },
-  },
-};
 export default definePageComponent(
   import.meta.url,
   () => () => (
     <VMain class="h-100 d-flex">
       <_Table />
-      <ExperimentDetail
-        experiment={exp.selected}
-        recuitment={void 0}
-        readonly
-      />
+      <ExperimentDetail experiment={list.current} readonly />
     </VMain>
   ),
   {
-    beforeRouteEnter(to, from, next) {
-      fetchExpList().finally(next);
+    beforeRouteEnter(to, from) {
+      list.request.fetch();
     },
   },
 );

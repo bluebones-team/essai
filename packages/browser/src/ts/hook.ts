@@ -1,31 +1,24 @@
-import { deepClone, deepIsEqual } from 'shared';
+import { computed, reactive, ref, watch, type Ref } from '@vue/reactivity';
+import { deepClone, deepEqual, omit, pick } from 'shared';
 import {
   ExperimentState,
   RecruitmentType,
   Theme,
-  type ExperimentFrontDataType,
+  type ExperimentFrontType,
 } from 'shared/data';
-import { progress } from 'shared/router';
+import { type ApiRecordTypes } from 'shared/router';
 import {
-  computed,
   h,
   onMounted,
   onUnmounted,
-  reactive,
-  ref,
-  shallowReactive,
   shallowRef,
-  toRaw,
-  toRef,
-  watch,
-  watchEffect,
+  useModel as vue_useModel,
   type Component,
-  type Ref,
 } from 'vue';
 import { toAppTheme, type ActualTheme } from '~/ts/vuetify';
-import { c } from './client';
-import { setting, showProgressbar, snackbar } from './state';
-import { error } from './util';
+import { useRequest } from './client';
+import { setting } from './state';
+import { error, getModelKeys } from './util';
 
 /**@see https://vueuse.org/guide/ */
 export function useEventListener<T extends EventTarget, K extends EventType<T>>(
@@ -79,7 +72,7 @@ export function usePopup<
   }>,
 >(comp: T, defaults = () => ({}) as Props<T>) {
   const { Comp, change } = useComponent(comp, defaults);
-  const isShow = ref(false);
+  const isShow = shallowRef(false);
   return {
     Comp: () =>
       // @ts-ignore
@@ -97,37 +90,48 @@ export function usePopup<
     },
   };
 }
-export function useList<T>(items: T[]) {
-  const _items = shallowReactive(items);
-  return {
-    items: _items,
-    add(e: T) {
-      _items.push(e);
-    },
-    remove(e: T) {
-      _items.splice(_items.indexOf(e), 1);
-    },
-    clear() {
-      _items.splice(0, _items.length);
-    },
-  };
+export function useModel<
+  T extends LooseObject,
+  K extends string & keyof T = 'modelValue',
+>(
+  props: T,
+  key?: K,
+  options?: Partial<{
+    get: (v: T[K]) => any;
+    set: (v: T[K]) => any;
+  }>,
+) {
+  const keys = getModelKeys(key);
+  for (const k of keys) {
+    typeof props[k] === 'undefined' && error(`Missing required prop: ${k}`);
+  }
+  //@ts-ignore
+  return vue_useModel(props, key ?? 'modelValue', options) as Ref<
+    RequiredByKey<T, (typeof keys)[number]>[K]
+  >;
 }
-export function useTempModel<T>(model: Ref<T>) {
-  const clone = () => deepClone(toRaw(model.value));
-  const temp = ref<T>() as Ref<T>;
-  watchEffect(() => (temp.value = clone()));
-  const hasChange = computed(() => !deepIsEqual(model.value, temp.value));
+/**
+ * @see https://github.com/vueuse/vueuse/blob/main/packages/core/useCloned/index.ts#L42
+ * @see https://github.com/vuetifyjs/vuetify/blob/master/packages/vuetify/src/components/VConfirmEdit/VConfirmEdit.tsx#L57
+ */
+export function useCloned<T>(source: Ref<T>) {
+  const clone = () => deepClone(source.value);
+  const cloned = ref() as Ref<T>;
+  watch(source, () => (cloned.value = clone()), {
+    immediate: true,
+    deep: true,
+  });
+  const isModified = computed(() => !deepEqual(source.value, cloned.value));
   return {
-    model: temp,
-    hasChange,
-    save() {
-      if (!hasChange.value) return;
-      if (!temp.value) return error('temp model is null');
-      model.value = deepClone(temp.value);
+    cloned,
+    isModified,
+    sync() {
+      if (!isModified.value) return;
+      source.value = cloned.value;
     },
-    cancel() {
-      if (!this.hasChange.value) return;
-      temp.value = clone();
+    reset() {
+      if (!isModified.value) return;
+      cloned.value = clone();
     },
   };
 }
@@ -160,168 +164,105 @@ export function useCombinedBoolean() {
   const combined = computed(() => states.every((s) => s));
   return { states, combined };
 }
+export function useList<T, U extends boolean = false>(
+  items: T[],
+  multi = false as U,
+) {
+  const current = (multi ? [] : void 0) as U extends true ? T[] : T | undefined;
+  return reactive({
+    current,
+    items,
+    /**add item to list */
+    add(item: T) {
+      this.items.push(item);
+    },
+    /**remove item from list */
+    remove(item: Partial<T>) {
+      const keys = Object.keys(item);
+      if (keys.length === 0) return;
+      const index = this.items.findIndex((i) =>
+        //@ts-ignore
+        keys.every((k) => i[k] === item[k]),
+      );
+      if (index === -1) return;
+      this.items.splice(index, 1);
+    },
+    set(items: T[]) {
+      this.items.splice(0, this.items.length, ...items);
+    },
+  });
+}
+/**
+ * @param path - api path
+ * @param initReq - initial request data
+ */
+export function useFetchList<
+  T extends Extract<keyof ApiRecordTypes, `${string}/ls`>,
+  U extends boolean = false,
+>(
+  path: T,
+  initReq: ApiRecordTypes[T]['in'] = { ps: 20, pn: 1 },
+  multiple = false as U,
+) {
+  type Item = Extract<
+    ApiRecordTypes[T]['out'],
+    { data: unknown }
+  >['data'][number];
+  const list = useList<Item, U>([], multiple);
+  const request = useRequest(path, initReq);
+  watch(
+    () => request.output,
+    (v) => list.set(v),
+  );
+  return Object.assign(list, { request });
+}
 
 //data
-export function useExperiment<T extends ExperimentFrontDataType>(type: T) {
-  const state = shallowReactive({
-    list: [] as FTables['experiment'][T]['preview'][],
-    selected: void 0 as FTables['experiment'][T]['data'] | undefined,
-    page: { ps: 20, pn: 1 },
-  });
-
-  watch(
-    () => state.selected,
-    (value) => {
-      if (!value) return;
-      c[`/exp/${type}/sup`].with(progress(showProgressbar, 'value')).send(
-        { eid: value.eid },
-        {
-          //@ts-ignore
-          0(res) {
-            Object.assign(value, res.data);
-          },
-        },
-      );
-    },
-  );
-  function fetchList(
-    filterData: FTables['experiment']['filter']['data'] = {
-      rtype: RecruitmentType.Subject.value,
-    },
-  ) {
-    return c[`/exp/${type}/ls`].with(progress(showProgressbar, 'value')).send(
-      { ...state.page, filter: filterData },
-      {
-        //@ts-ignore
-        0(res) {
-          state.list = res.data;
-        },
-      },
-    );
-  }
-  return {
-    state,
-    fetchList,
-  };
-}
-export function useExperimentFilter<T extends ExperimentFrontDataType>(
-  type: T,
-) {
+export function useExperimentFilter<T extends ExperimentFrontType>(type: T) {
   const toDefaultRange = (): FTables['experiment']['filter']['range'] => ({
     duration_range: [1, 100] as [Shared['duration'], Shared['duration']],
     times_range: [1, 100],
     fee_range: [1, 100],
   });
-  const state = reactive<FTables['experiment']['filter']>({
+  const request =
+    type === 'public'
+      ? useRequest('/exp/public/range', void 0, {
+          0(res) {
+            store.range = res.data;
+            store.data = Object.assign(
+              pick(store.data, ['rtype', 'state']),
+              deepClone(res.data),
+            );
+          },
+        })
+      : console.warn(`not supported fetch ${type} experiment range`);
+  const store = reactive({
     range: toDefaultRange(),
     data: {
+      ...toDefaultRange(),
       rtype: RecruitmentType.Subject.value,
       state: ExperimentState.Ready.value,
-      ...toDefaultRange(),
     },
+    request,
   });
-  function fetchRange() {
-    if (type !== 'public')
-      return snackbar.show({
-        text: `not supported fetch ${type} range, only public`,
-        color: 'error',
-      });
-    return c[`/exp/${'public'}/range`]
-      .with(progress(showProgressbar, 'value'))
-      .send(void 0, {
-        0(res) {
-          state.range = res.data;
-          Object.assign(state.data, deepClone(res.data));
-        },
-      });
-  }
-  return {
-    state,
-    fetchRange,
-  };
+  return store;
 }
-export function useRecruitment() {
-  c['/recruit/ls'].send(
-    {
-      eid: '',
-      pn: 1,
-      ps: 1,
-    },
-    {
-      0(res) {
-        console.log(res.data);
-      },
+export function useExperimentList<T extends ExperimentFrontType>(type: T) {
+  const filter = useExperimentFilter(type);
+  const experimentList = useFetchList(`/exp/${type}/ls`, {
+    ps: 20,
+    pn: 1,
+    ...filter.data,
+  });
+  watch(
+    () => filter.data,
+    () => {
+      //@ts-ignore
+      experimentList.request.input = Object.assign(
+        omit(experimentList.request.input, Object.keys(filter.data)),
+        filter.data,
+      );
     },
   );
-}
-export function useRecruitmentCondition() {}
-export function useRecruitmentParticipant(
-  exp: Ref<FTables['experiment'][ExperimentFrontDataType]['data'] | undefined>,
-) {
-  const state = reactive({
-    list: [] as FTables['recruitment_participant'][],
-    rtype: RecruitmentType.Subject.value as RecruitmentType,
-    selected: null as FTables['recruitment_participant'] | null,
-    page: { ps: 20, pn: 1 },
-  });
-  watchEffect(() => {
-    state.selected = state.list && null;
-  });
-  function fetchList() {
-    if (!exp.value)
-      return snackbar.show({ text: '请选择项目', color: 'error' });
-    if (!state.selected)
-      return snackbar.show({ text: '请选择招募条件', color: 'error' });
-    return c['/recruit/ptc/ls'].with(progress(showProgressbar, 'value')).send(
-      {
-        ...state.page,
-        rcid: state.selected.rcid,
-      },
-      {
-        0(res) {
-          state.list = res.data;
-        },
-      },
-    );
-  }
-  return {
-    state,
-    fetchList,
-  };
-}
-export function useExperimentData<T extends ExperimentFrontDataType>(type: T) {
-  const exp = useExperiment(type);
-  const filter = useExperimentFilter(type);
-  const ptc = useRecruitmentParticipant(toRef(exp.state, 'selected'));
-  return {
-    exp: exp.state,
-    fetchList: exp.fetchList,
-    filter: filter.state,
-    fetchRange: filter.fetchRange,
-    search: () => exp.fetchList(filter.state.data),
-    ptc: ptc.state,
-    fetchPtcList: ptc.fetchList,
-  };
-}
-export function useUserParticipant() {
-  const state = reactive({
-    list: [] as FTables['user_participant'][],
-    selected: [] as FTables['user_participant'][],
-    rtype: RecruitmentType.Subject.value as RecruitmentType,
-    page: { ps: 20, pn: 1 },
-  });
-  function fetchList() {
-    return c['/usr/ptc/ls'].with(progress(showProgressbar, 'value')).send(
-      { ...state.page, filter: { rtype: state.rtype } },
-      {
-        0(res) {
-          state.list = res.data;
-        },
-      },
-    );
-  }
-  return {
-    state,
-    fetchList,
-  };
+  return Object.assign(experimentList, { filter });
 }

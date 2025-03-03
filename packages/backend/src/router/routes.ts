@@ -135,14 +135,12 @@ export const routes: {
   async '/usr/ptc/ls'({ input, user }) {
     const query = db
       .selectFrom('user')
-      .innerJoin('user_participant', (join) => {
-        const builder = join
+      .innerJoin('user_participant', (join) =>
+        join
           .onRef('user_participant.puid', '=', 'user.uid')
-          .on('user_participant.uid', '=', user.uid);
-        return input.filter
-          ? builder.on('user_participant.rtype', '=', input.filter.rtype)
-          : builder;
-      })
+          .on('user_participant.uid', '=', user.uid)
+          .on('user_participant.rtype', '=', input.rtype),
+      )
       .paginate(input)
       .select([
         'user.uid',
@@ -150,7 +148,7 @@ export const routes: {
         'user.face',
         'user.gender',
         'user.birthday',
-        'user_participant.rtype as rtype',
+        'user_participant.rtype',
       ]);
     return o.succ(await query.execute());
   },
@@ -181,17 +179,18 @@ export const routes: {
   //#endregion /usr
   //#region /exp
   async '/exp/c'({ input, user }) {
+    const eid = randomUUID();
     await db
       .insertInto('experiment')
       .values({
         ...input,
-        eid: randomUUID(),
+        eid,
         uid: user.uid,
         state: ExperimentState.Ready.value,
         created_at: date2ts(new Date()),
       })
       .execute();
-    return o.succ();
+    return o.succ({ eid });
   },
   async '/exp/u'({ input, user }) {
     const { eid, ...restInput } = input;
@@ -300,26 +299,20 @@ export const routes: {
       return o.fail('这个实验还没发布');
     return o.succ(omit(experiment, ['created_at', 'state']));
   },
-  async '/exp/public/sup'({ input, user }) {
-    const { eid } = input;
-    const experiment = await expCacher.get(eid);
-    if (!experiment) return o.fail('实验不存在');
-    if (experiment.state !== ExperimentState.Passed.value)
-      return o.fail('这个实验还没发布');
-    return o.succ(pick(experiment, ['uid', 'notice']));
-  },
   async '/exp/public/ls'({ input, user }) {
     const query = db
       .selectFrom('experiment')
       .select([
         'experiment.eid',
+        'experiment.uid',
         'experiment.title',
         'experiment.type',
         'experiment.position',
+        'experiment.notice',
       ])
       .paginate(input)
       .filter('experiment', {
-        ...input.filter,
+        ...input,
         state: ExperimentState.Passed.value,
       });
     return o.succ(await query.execute());
@@ -383,14 +376,6 @@ export const routes: {
     if (!experiment) return o.fail('实验不存在');
     return o.succ(omit(experiment, ['created_at', 'state']));
   },
-  async '/exp/joined/sup'({ input, user }) {
-    const { eid } = input;
-    if (!(await userCacher.isJoinedEid(user.uid, eid)))
-      return o.fail('你得先报名实验');
-    const experiment = await expCacher.get(eid);
-    if (!experiment) return o.fail('实验不存在');
-    return o.succ(pick(experiment, ['uid', 'notice']));
-  },
   async '/exp/joined/ls'({ input, user }) {
     const eids = await userCacher.getJoinedEids(user.uid);
     if (!eids.length) return o.succ([]);
@@ -399,7 +384,7 @@ export const routes: {
       .where('experiment.eid', 'in', eids)
       .selectAll()
       .paginate(input)
-      .filter('experiment', input.filter);
+      .filter('experiment', input);
     return o.succ(await query.execute());
   },
   async '/exp/own'({ input, user }) {
@@ -420,14 +405,6 @@ export const routes: {
       ]),
     );
   },
-  async '/exp/own/sup'({ input, user }) {
-    const { eid } = input;
-    if (!(await userCacher.isOwnEid(user.uid, eid)))
-      return o.fail('这不是你的实验');
-    const experiment = await expCacher.get(eid);
-    if (!experiment) return o.fail('实验不存在');
-    return o.succ(pick(experiment, ['uid', 'position', 'notice']));
-  },
   async '/exp/own/ls'({ input, user }) {
     const eids = await userCacher.getOwnEids(user.uid);
     if (!eids.length) return o.succ([]);
@@ -436,22 +413,21 @@ export const routes: {
       .selectAll()
       .where('experiment.eid', 'in', eids)
       .paginate(input)
-      .filter('experiment', input.filter);
+      .filter('experiment', input);
     return o.succ(await query.execute());
   },
   //#endregion /exp
   //#region /recruit
-  async '/recruit/ls'({ input, user }) {
-    const { eid } = input;
-    if (!(await userCacher.isOwnEid(user.uid, eid)))
+  async '/recruit'({ input, user }) {
+    if (!(await userCacher.isOwnEid(user.uid, input.eid)))
       return o.fail('这不是你的实验');
-    const recruits = await db
+    const recruitment = await db
       .selectFrom('recruitment')
-      .where('eid', '=', eid)
+      .where((eb) => eb.and(input))
       .selectAll()
-      .paginate(input)
-      .execute();
-    return o.succ(recruits);
+      .executeTakeFirst();
+    if (!recruitment) return o.fail('招募不存在');
+    return o.succ(recruitment);
   },
   async '/recruit/c'({ input, user }) {
     const { eid } = input;

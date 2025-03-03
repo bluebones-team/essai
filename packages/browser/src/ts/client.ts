@@ -4,7 +4,7 @@ import { error } from './util';
 import { apiPrefix } from 'shared/router/config.json';
 
 //@ts-ignore
-export const c = createClient({
+export const { c, useRequest } = createClient({
   sender(ctx) {
     const { meta } = ctx.api;
     if (meta.type === 'ws') {
