@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // "esModuleInterop": true,
+    // "moduleResolution": "node",
+    // "isolatedModules": true,
+    "composite": true,
+    "paths": {
+      "~/*": ["./src/*"]
+    },
+    "jsx": "preserve",
+    "jsxImportSource": "vuerx-jsx"
+  },
+  "include": ["src"]
+}

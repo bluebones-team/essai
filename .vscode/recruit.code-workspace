@@ -13,10 +13,11 @@
       "path": "../packages/browser",
     },
     {
+      "path": "../packages/browser-v2",
+    },
+    {
       "path": "../packages/wxapp",
     },
   ],
-  "settings": {
-    ,
-  },
+  "settings": {},
 }
