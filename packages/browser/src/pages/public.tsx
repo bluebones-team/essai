@@ -1,6 +1,6 @@
 import { mdiAccountPlusOutline } from '@mdi/js';
-import { computed, effect } from '@vue/reactivity';
 import { ExperimentType, Role } from 'shared/data';
+import { computed } from 'vue';
 import { useDisplay } from 'vuetify';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VChip } from 'vuetify/components/VChip';
@@ -9,7 +9,7 @@ import { ExperimentDetail, ExperimentFilter } from '~/components/experiment';
 import { Table, type TableHeader } from '~/components/table';
 import { useRequest } from '~/ts//client';
 import { useExperimentList } from '~/ts/hook';
-import { snackbar } from '~/ts/state';
+import { snackbar, store } from '~/ts/state';
 import { definePageComponent } from '~/ts/util';
 
 export const route: LooseRouteRecord = {
@@ -35,6 +35,7 @@ const joinRequest = useRequest(
     },
   },
 );
+store.add('publicList', list);
 
 function useTableHeaders() {
   const { xs } = useDisplay();

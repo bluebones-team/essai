@@ -2,6 +2,7 @@ import { createClient } from 'shared/router';
 import { storage } from '~/ts/state';
 import { error } from './util';
 import { apiPrefix } from 'shared/router/config.json';
+import { reactive, watch } from 'vue';
 
 //@ts-ignore
 export const { c, useRequest } = createClient({
@@ -35,5 +36,8 @@ export const { c, useRequest } = createClient({
   },
   error,
   setToken: (d) => storage.setToken(d),
+  //@ts-ignore
+  reactive,
+  watch,
 });
 if (import.meta.env.DEV) Object.assign(window, { c });

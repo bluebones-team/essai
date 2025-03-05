@@ -100,6 +100,14 @@ export const injection = {
   editable: Symbol('editable') as InjectionKey<MaybeGetter<boolean>>,
 };
 
-Object.assign(window, {
-  app: reactive({ setting, snackbar, messages, udata }),
-});
+const storeRaw = {
+  setting,
+  snackbar,
+  messages,
+  udata,
+  add(name: string, value: {}) {
+    store[name] = value;
+  },
+};
+export const store = reactive<LooseObject & typeof storeRaw>(storeRaw);
+Object.assign(window, { store });

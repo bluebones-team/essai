@@ -1,4 +1,3 @@
-import { reactive, watch } from '@vue/reactivity';
 import { error, type Middle } from '..';
 import { OutputCode, type ExtractOutput } from '../data';
 import {
@@ -43,6 +42,8 @@ export function createClient(opts: {
   sender(ctx: Client.Context): void;
   error(msg: string, ...e: any): void;
   setToken(token: Shared['token']): void;
+  reactive<T extends {}>(o: T): T;
+  watch(...e: unknown[]): unknown;
 }) {
   const client = new Client();
   client.in
@@ -124,7 +125,7 @@ export function createClient(opts: {
     input: In[P],
     codeCbs: Partial<CodeCallbacks<Out[P]>> = {},
   ) {
-    const store = reactive({
+    const store = opts.reactive({
       loading: false,
       /**request data, change it will trigger fetch */
       input,
@@ -151,7 +152,7 @@ export function createClient(opts: {
         }),
       );
     }
-    watch(store.input, fetch, { deep: true });
+    opts.watch(() => store.input, fetch);
     return store;
   }
   const c = new Proxy({} as { [P in keyof ApiRecords]: ProxyClient<P> }, {

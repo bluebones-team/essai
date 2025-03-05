@@ -14,7 +14,6 @@ import { VTextField } from 'vuetify/components/VTextField';
 import { useCloned, useCombinedBoolean, useModel, usePopup } from '~/ts/hook';
 import { Dialog } from './dialog';
 import { Form } from './form';
-import { effect, watch } from '@vue/reactivity';
 
 export const Experiment = defineComponent(function (p: {
   model: FTables['experiment'][ExperimentFrontType];
@@ -41,10 +40,6 @@ export const ExperimentFilter = defineComponent(function (p: {
   modelValue?: Filter['data'];
   'onUpdate:modelValue'?(value: Filter['data']): void;
 }) {
-  effect(() => {
-    console.log(p.modelValue?.duration_range, p.range.duration_range);
-  });
-
   const { xs } = useDisplay();
   const model = useModel(p);
   const { cloned, sync, reset } = useCloned(model);

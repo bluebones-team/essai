@@ -6,7 +6,7 @@ import {
   mdiFileMultipleOutline,
   mdiPublish,
 } from '@mdi/js';
-import { watch } from '@vue/reactivity';
+import { watch } from 'vue';
 import {
   birth2age,
   ExperimentState,

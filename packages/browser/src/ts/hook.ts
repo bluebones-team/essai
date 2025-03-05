@@ -1,4 +1,3 @@
-import { computed, reactive, ref, watch, type Ref } from '@vue/reactivity';
 import { deepClone, deepEqual, omit, pick } from 'shared';
 import {
   ExperimentState,
@@ -8,12 +7,17 @@ import {
 } from 'shared/data';
 import { type ApiRecordTypes } from 'shared/router';
 import {
+  computed,
   h,
   onMounted,
   onUnmounted,
+  reactive,
+  ref,
   shallowRef,
   useModel as vue_useModel,
+  watch,
   type Component,
+  type Ref,
 } from 'vue';
 import { toAppTheme, type ActualTheme } from '~/ts/vuetify';
 import { useRequest } from './client';
@@ -212,7 +216,7 @@ export function useFetchList<
   const request = useRequest(path, initReq);
   watch(
     () => request.output,
-    (v) => list.set(v),
+    (v) => v && list.set(v),
   );
   return Object.assign(list, { request });
 }
